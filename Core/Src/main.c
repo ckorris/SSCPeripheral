@@ -22,7 +22,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdio.h>
+
 #include "I2CNetworkCommon.h"
+#include "PeripheralReceiveCommands.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,6 +58,10 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 uint8_t commandBuf[COMMAND_BUF_SIZE];
 
 int needToListenAgain = 0;
+
+int paramsSet = 0; //1 if params have been set at least once.
+sampleParams* params; //Configuration for collecting samples - device count, buffer size, etc.
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -125,24 +133,16 @@ int main(void)
   {
 	  if(needToListenAgain == 1)
 	  {
+		  //Testing only having lights flash.
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 		  HAL_Delay(200);
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 
 		  needToListenAgain = 0;
-		  HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
+		  //HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
 
 	  }
 
-	  //HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
-
-
-	  //HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
-	  //HAL_I2C_Slave_Receive(&hi2c1, commandBuf, COMMAND_BUF_SIZE, HAL_MAX_DELAY);
-	  //HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-	  //HAL_Delay(400);
-	  //HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-	  //HAL_Delay(400);
 
     /* USER CODE END WHILE */
 
@@ -414,42 +414,35 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
-{
-	 HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
-
-	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-	  HAL_Delay(400);
-	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-}
-
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
 	  //HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
 
 	enum CommandType cType = (enum CommandType)commandBuf[0];
 
-	//Temp for testing.
-	if(cType == SendSampleParams)
+	switch(cType)
 	{
-		uint16_t packetSize = CommandTypeBufferSize(SendSampleParams);
-		uint8_t packetBuf[packetSize];
-		//packetBuf[0] = 0x00;
-		//Start a blocking listen for the packet.
-		HAL_I2C_Slave_Receive(hi2c, packetBuf, packetSize, 1000); //1000 is arbitrary.
-
-		//Build a packet out of what we received.
-		sampleParams* packet = (sampleParams*)&packetBuf;
-		//Probably shouldn't be done on the interrupt but oh well.
-		uint8_t messageBuf[200];
-
-		sprintf((char*)messageBuf, "DC: %u BS: %u CC: %u DMS: %u", (unsigned int)packet->DeviceCount, (unsigned int)packet->BufferSize, (unsigned int)packet->CycleCount,(unsigned int)packet->DelayMS);
-		PrintUARTMessage(&huart3, messageBuf);
-
+	case SendSampleParams: ;
+		ReceiveSampleParamsCommand(hi2c, &params, &paramsSet);
+		break;
+	case BeginSampling:
+		//Stuff
+		break;
+	case CheckFinished:
+		//Stuff
+		break;
+	case RequestData:
+		//Stuff;
+		break;
+	case Reset:
+		//Stuff
+		break;
 	}
 
-	needToListenAgain = 1;
 
+	//Let's try actually starting the listener again now.
+	needToListenAgain = 1; //This will be used just for lights.
+	HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
 }
 
 void PrintUARTMessage(UART_HandleTypeDef *huart, const char message[])
