@@ -66,8 +66,9 @@ int needToListenAgain = 0; //Temp. Used to flash LEDs outside of interrupt when 
 int needToFlashBlue = 0; //Temp. Used to flash just the blue one.
 
 int paramsSet = 0; //1 if params have been set at least once.
-sampleParams* params; //Configuration for collecting samples - device count, buffer size, etc.
+sampleParams params; //Configuration for collecting samples - device count, buffer size, etc.
 
+int needToStartSampling = 0; //1 when interrupt has triggered the sample to start, but that should happen in main loop.
 int hasStartedSampling = 0; //1 when DMA sampling has started and has not finished yet.
 int hasFinishedSampling = 0; //1 When DMA sampling started and concluded, and a new sample session has not started yet.
 
@@ -176,20 +177,28 @@ int main(void)
 
 	  }
 
+
 	  if(needToFlashBlue == 1)
 	  {
+		  //HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+		  //HAL_Delay(200);
 		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-		  HAL_Delay(200);
-		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 
 		  needToFlashBlue = 0;
 	  }
 
+
 	  //Temp.
-	  if(hasStartedSampling == 1)
+	  if(needToStartSampling == 1 && hasStartedSampling == 0)
 	  {
-		  hasStartedSampling = 0;
-		  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buf, params->BufferSize);
+		  needToStartSampling = 0;
+
+		  uint16_t newBuf[params.BufferSize];
+		  adc_buf = newBuf;
+		  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buf, params.BufferSize);
+		  hasStartedSampling = 1;
+		  hasFinishedSampling = 0;
+		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 	  }
 
 
@@ -690,12 +699,12 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	switch(cType)
 	{
 	case SendSampleParams:
-		ReceiveSampleParamsCommand(hi2c, params, &paramsSet);
+		ReceiveSampleParamsCommand(hi2c, &params, &paramsSet);
 		break;
 	case BeginSampling:
-		if(hasStartedSampling == 0 && hasFinishedSampling == 0)
+		if(hasStartedSampling == 0)
 		{
-			ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc_buf, params, transmitBuffers, &hasStartedSampling, &currentCycle);
+			ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc_buf, params, transmitBuffers, &needToStartSampling, &currentCycle);
 		}
 		break;
 	case CheckFinished:
@@ -718,46 +727,48 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 //Callback for when the buffer is half filled.
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
-	//if(hasStartedSampling == 1 && hasFinishedSampling == 0)
-	if(hasFinishedSampling == 0)
+	if(hasStartedSampling == 1 && hasFinishedSampling == 0)
 	{
-		int halfBufferLength = params->BufferSize / 2;
+		//This code gets really weird results even if I tweak it. I apparently can't assign a uint16_t to a uint16_t.
+		uint16_t bufferSize = params.BufferSize;
+		int halfBufferLength = (int)bufferSize / 2;
 
-		for(int i = 0; i < halfBufferLength; i++)
+		for(short i = 0; i < halfBufferLength; i++)
 		{
 			transmitBuffers[currentCycle][i] = adc_buf[i];
+			//transmitBuffers[currentCycle][i] = 5;
 		}
 	}
 
-	needToFlashBlue = 1;
 }
 //Callback for when buffer is completely filled.
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	//end = std::chrono::high_resolution_clock::now();
 
-	//if(hasStartedSampling == 1 && hasFinishedSampling == 0)
-	if(hasFinishedSampling == 0)
+	if(hasStartedSampling == 1 && hasFinishedSampling == 0)
 	{
-		//HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-		//uint16_t transmitBufferArray[params->CycleCount] ;
 		//Log start time in ticks.
-		cycleEndTimes[currentCycle] = ReadCurrentTicks(htim2);
+		//cycleEndTimes[currentCycle] = ReadCurrentTicks(htim2); //TODO: Restore this. Breaks things in a way that's hard to debug.
 
-		int halfBufferLength = params->BufferSize / 2;
+		int halfBufferLength = params.BufferSize / 2;
 
-		for(int i = halfBufferLength; i < params->BufferSize; i++)
+
+		for(int i = halfBufferLength; i < params.BufferSize; i++)
 		{
 			transmitBuffers[currentCycle][i] = adc_buf[i];
+			//transmitBuffers[currentCycle][i] = 5;
 		}
+
 
 		currentCycle++;
 
-		if(currentCycle == params->CycleCount)
+		if(currentCycle == params.CycleCount)
 		{
-		  	HAL_ADC_Stop_DMA(&hadc1);
+		  	HAL_ADC_Stop_DMA(hadc);
 		  	hasStartedSampling = 0;
 			hasFinishedSampling = 1;
+			needToFlashBlue = 1;
 		}
 	}
 }

@@ -19,7 +19,7 @@ void ReceiveSampleParamsCommand(I2C_HandleTypeDef *hi2c, sampleParams *outParams
 	*outSetState = 1;
 }
 
-void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, sampleParams *params, uint16_t** transferBuffers, int *startedFlag, int *currentCycleCount)
+void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, sampleParams params, uint16_t** transferBuffers, int *startedFlag, int *currentCycleCount)
 {
 	/*
 	if(startedFlag == 1)
@@ -28,14 +28,14 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, s
 	}
 	*/
 
-	uint32_t newADCBuffer[params->BufferSize];
+	uint32_t newADCBuffer[params.BufferSize];
 	adcBuffer = newADCBuffer;
 
 	currentCycleCount = 0;
 
-	for(int i = 0; i < params->CycleCount; i++)
+	for(int i = 0; i < params.CycleCount; i++)
 	{
-		uint16_t newTransferBuffer[params->BufferSize];
+		uint16_t newTransferBuffer[params.BufferSize];
 		//uint16_t* newTransferBuffer =
 		transferBuffers[i] = (uint16_t*)newTransferBuffer;
 	}
@@ -50,7 +50,7 @@ void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c) //TODO: Will need more
 
 }
 
-void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams *params) //TODO: Will need flags to make sure it's ready.
+void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams params) //TODO: Will need flags to make sure it's ready.
 {
 
 }
