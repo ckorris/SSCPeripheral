@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "I2CNetworkCommon.h"
 #include "PeripheralReceiveCommands.h"
@@ -193,8 +194,8 @@ int main(void)
 	  {
 		  needToStartSampling = 0;
 
-		  uint16_t newBuf[params.BufferSize];
-		  adc_buf = newBuf;
+		  //uint16_t newBuf[params.BufferSize]; //Doing elsewhere now.
+		  //adc_buf = newBuf;
 		  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buf, params.BufferSize);
 		  hasStartedSampling = 1;
 		  hasFinishedSampling = 0;
@@ -699,7 +700,31 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	switch(cType)
 	{
 	case SendSampleParams:
+
+
+		if(paramsSet == 1)
+		{
+			free(adc_buf);
+			for(int i = 0; i < params.CycleCount; i++)
+			{
+				//free(transmitBuffers[i]); //For soooome reason this causes a hard fault at the second run.
+			}
+			free(transmitBuffers);
+
+		}
 		ReceiveSampleParamsCommand(hi2c, &params, &paramsSet);
+
+		//Try allocating buffer here
+		//Doing it slower now to be safe. TODO: Make faster with malloc.
+		adc_buf = calloc(params.BufferSize, sizeof(uint16_t)); //Maybe needs to be 32?
+		transmitBuffers = calloc(params.CycleCount, sizeof(uint16_t*));
+		for(int i = 0; i < params.CycleCount; i++)
+		{
+			//uint16_t newTransferBuffer[params.BufferSize];
+			//transferBuffers[i] = (uint16_t*)newTransferBuffer;
+			transmitBuffers[i] = calloc(params.BufferSize, sizeof(uint16_t));
+		}
+
 		break;
 	case BeginSampling:
 		if(hasStartedSampling == 0)

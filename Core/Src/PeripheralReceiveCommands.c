@@ -28,10 +28,11 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, s
 	}
 	*/
 
-	uint32_t newADCBuffer[params.BufferSize];
-	adcBuffer = newADCBuffer;
+	//TEST: Commenting to do elsewhere.
+	//uint32_t newADCBuffer[params.BufferSize];
+	//adcBuffer = newADCBuffer;
 
-	currentCycleCount = 0;
+	*currentCycleCount = 0;
 
 	for(int i = 0; i < params.CycleCount; i++)
 	{
