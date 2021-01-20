@@ -701,13 +701,13 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	{
 	case SendSampleParams:
 
-
+		//TODO: Move all buffer clearing and re-allocaiton into receive command.
 		if(paramsSet == 1)
 		{
 			free(adc_buf);
 			for(int i = 0; i < params.CycleCount; i++)
 			{
-				//free(transmitBuffers[i]); //For soooome reason this causes a hard fault at the second run.
+				free(transmitBuffers[i]); //For soooome reason this causes a hard fault at the second run.
 			}
 			free(transmitBuffers);
 

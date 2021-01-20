@@ -36,9 +36,9 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, s
 
 	for(int i = 0; i < params.CycleCount; i++)
 	{
-		uint16_t newTransferBuffer[params.BufferSize];
+		//uint16_t newTransferBuffer[params.BufferSize];
 		//uint16_t* newTransferBuffer =
-		transferBuffers[i] = (uint16_t*)newTransferBuffer;
+		//transferBuffers[i] = (uint16_t*)newTransferBuffer;
 	}
 
 	//HAL_ADC_Start_DMA(hadc, adcBuffer, params->BufferSize); //Gonna try moving to while loop.
@@ -46,7 +46,7 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, s
 	*startedFlag = 1;
 }
 
-void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c) //TODO: Will need more params for flags.
+void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c, int isFinished)
 {
 
 }
