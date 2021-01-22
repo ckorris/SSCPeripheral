@@ -48,7 +48,7 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, s
 
 void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c, int isFinished)
 {
-
+	SendFinishedStatusCommand(hi2c, isFinished);
 }
 
 void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams params) //TODO: Will need flags to make sure it's ready.

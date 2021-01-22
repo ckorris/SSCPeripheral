@@ -5,4 +5,6 @@
 #include "I2CNetworkCommon.h"
 
 
+void SendFinishedStatusCommand(I2C_HandleTypeDef *hi2c, int isFinished);
+
 void SendSampleDataCommand(I2C_HandleTypeDef *hi2c, sampleParams *params, uint16_t** transmitBuffers);

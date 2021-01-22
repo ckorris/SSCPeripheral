@@ -170,7 +170,7 @@ int main(void)
 
 		  //Testing only having lights flash.
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-		  HAL_Delay(200);
+		  HAL_Delay(150);
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 
 		  needToListenAgain = 0;
@@ -733,7 +733,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		}
 		break;
 	case CheckFinished:
-		//Stuff
+		ReceiveCheckFinishedCommand(hi2c, hasFinishedSampling);
 		break;
 	case RequestData:
 		//Stuff;
