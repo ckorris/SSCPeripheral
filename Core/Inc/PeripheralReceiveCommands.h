@@ -10,7 +10,9 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, s
 
 void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c, int isFinished); //TODO: Will need more params for flags.
 
+void ReceiveRequestSampleHeaderCommand(I2C_HandleTypeDef *hi2c, sampleParams params, TIM_HandleTypeDef htim, uint32_t startOffsetTicks, uint32_t* cycleEndTimes);
+
 void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams params); //TODO: Will need flags to make sure it's ready.
 
-void ReceiveResetCommand(); //TODO: Will need more params for flags.
+
 ;

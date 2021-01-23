@@ -28,6 +28,7 @@
 
 #include "I2CNetworkCommon.h"
 #include "PeripheralReceiveCommands.h"
+#include "TimeHelpers.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,6 +39,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define COMMAND_BUF_SIZE 1
+
 
 /* USER CODE END PD */
 
@@ -79,8 +81,9 @@ uint16_t* adc_buf; //Pointer to array that will be made for ADC as a buffer.
 uint16_t** transmitBuffers; //Filled with data from adc_buf as it completes, and remains until cleared.
 
 //Timing
-uint32_t startTicks;
+//uint32_t startTicks; //Clock at the moment that we received the command to start sampling.
 //uint32_t cycleEndTimes[CYCLE_COUNT];
+uint32_t firstCycleStartTicks; //Clock at the moment we started the ADCs. May be different than startTicks if a delay was requested, plus setup time.
 uint32_t* cycleEndTimes;
 int currentCycle = 0;
 
@@ -99,7 +102,7 @@ static void MX_TIM2_Init(void);
 
 void PrintUARTMessage(UART_HandleTypeDef *huart, const char message[]);
 
-uint32_t ReadCurrentTicks(TIM_HandleTypeDef htim);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -196,6 +199,7 @@ int main(void)
 
 		  //uint16_t newBuf[params.BufferSize]; //Doing elsewhere now.
 		  //adc_buf = newBuf;
+		  firstCycleStartTicks = ReadCurrentTicks(htim2);
 		  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buf, params.BufferSize);
 		  hasStartedSampling = 1;
 		  hasFinishedSampling = 0;
@@ -695,6 +699,9 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
 	  //HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
 
+
+
+
 	enum CommandType cType = (enum CommandType)commandBuf[0];
 
 	switch(cType)
@@ -710,6 +717,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 				free(transmitBuffers[i]); //For soooome reason this causes a hard fault at the second run.
 			}
 			free(transmitBuffers);
+			free(cycleEndTimes);
 
 		}
 		ReceiveSampleParamsCommand(hi2c, &params, &paramsSet);
@@ -720,25 +728,25 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		transmitBuffers = calloc(params.CycleCount, sizeof(uint16_t*));
 		for(int i = 0; i < params.CycleCount; i++)
 		{
-			//uint16_t newTransferBuffer[params.BufferSize];
-			//transferBuffers[i] = (uint16_t*)newTransferBuffer;
 			transmitBuffers[i] = calloc(params.BufferSize, sizeof(uint16_t));
 		}
+		cycleEndTimes = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 
 		break;
 	case BeginSampling:
 		if(hasStartedSampling == 0)
 		{
 			ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc_buf, params, transmitBuffers, &needToStartSampling, &currentCycle);
+			ResetClock(htim2);
 		}
 		break;
 	case CheckFinished:
 		ReceiveCheckFinishedCommand(hi2c, hasFinishedSampling);
 		break;
-	case RequestData:
-		//Stuff;
+	case RequestSampleHeader:
+		ReceiveRequestSampleHeaderCommand(hi2c, params, htim2, firstCycleStartTicks, cycleEndTimes);
 		break;
-	case Reset:
+	case RequestSampleData:
 		//Stuff
 		break;
 	}
@@ -769,12 +777,11 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 //Callback for when buffer is completely filled.
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-	//end = std::chrono::high_resolution_clock::now();
-
 	if(hasStartedSampling == 1 && hasFinishedSampling == 0)
 	{
 		//Log start time in ticks.
-		//cycleEndTimes[currentCycle] = ReadCurrentTicks(htim2); //TODO: Restore this. Breaks things in a way that's hard to debug.
+
+		cycleEndTimes[currentCycle] = ReadCurrentTicks(htim2);
 
 		int halfBufferLength = params.BufferSize / 2;
 
@@ -782,7 +789,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 		for(int i = halfBufferLength; i < params.BufferSize; i++)
 		{
 			transmitBuffers[currentCycle][i] = adc_buf[i];
-			//transmitBuffers[currentCycle][i] = 5;
 		}
 
 
@@ -805,11 +811,6 @@ void PrintUARTMessage(UART_HandleTypeDef *huart, const char message[])
 	HAL_UART_Transmit(huart, (uint8_t*)message, strlen(message), 10);
 	char newLine[3] = "\r\n";
 	HAL_UART_Transmit(huart, (uint8_t*)newLine, 2, 10);
-}
-
-uint32_t ReadCurrentTicks(TIM_HandleTypeDef htim)
-{
-	return htim.Instance->CNT;
 }
 
 

@@ -7,4 +7,6 @@
 
 void SendFinishedStatusCommand(I2C_HandleTypeDef *hi2c, int isFinished);
 
+void SendSampleHeaderCommand(I2C_HandleTypeDef *hi2c, samplePacketHeader *packetHeader);
+
 void SendSampleDataCommand(I2C_HandleTypeDef *hi2c, sampleParams *params, uint16_t** transmitBuffers);
