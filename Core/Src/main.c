@@ -66,6 +66,7 @@ uint8_t commandBuf[COMMAND_BUF_SIZE];
 
 int needToListenAgain = 0; //Temp. Used to flash LEDs outside of interrupt when an interrupt wants to flash them.
 
+int needToFlashRed = 0; //Temp. Used to flash just the red one.
 int needToFlashBlue = 0; //Temp. Used to flash just the blue one.
 
 int paramsSet = 0; //1 if params have been set at least once.
@@ -171,16 +172,26 @@ int main(void)
 	  {
 		  HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
 
+		  /*
 		  //Testing only having lights flash.
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 		  HAL_Delay(150);
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-
+		  */
 		  needToListenAgain = 0;
 
 
 	  }
 
+
+	  if(needToFlashRed == 1)
+	  	  {
+	  		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+	  		  HAL_Delay(150);
+	  		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+
+	  		  needToFlashRed = 0;
+	  	  }
 
 	  if(needToFlashBlue == 1)
 	  {
@@ -732,12 +743,15 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		}
 		cycleEndTimes = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 
+		needToFlashRed = 1;
+		//HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
 		break;
 	case BeginSampling:
 		if(hasStartedSampling == 0)
 		{
-			ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc_buf, params, transmitBuffers, &needToStartSampling, &currentCycle);
 			ResetClock(htim2);
+			ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc_buf, params, transmitBuffers, &needToStartSampling, &currentCycle);
 		}
 		break;
 	case CheckFinished:
@@ -747,7 +761,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		ReceiveRequestSampleHeaderCommand(hi2c, params, htim2, firstCycleStartTicks, cycleEndTimes);
 		break;
 	case RequestSampleData:
-		//Stuff
+		ReceiveRequestDataCommand(hi2c, params, transmitBuffers);
 		break;
 	}
 
@@ -779,8 +793,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	if(hasStartedSampling == 1 && hasFinishedSampling == 0)
 	{
-		//Log start time in ticks.
-
+		//Log end time in ticks.
 		cycleEndTimes[currentCycle] = ReadCurrentTicks(htim2);
 
 		int halfBufferLength = params.BufferSize / 2;

@@ -24,6 +24,8 @@ typedef struct SampleParams
 	uint8_t DelayMS;
 } sampleParams;
 
+
+
 typedef struct SamplePacketHeader
 {
 	int DeviceID;
