@@ -62,8 +62,8 @@ void ReceiveRequestSampleHeaderCommand(I2C_HandleTypeDef *hi2c, sampleParams par
 	int samplesPerDevice = params.BufferSize / params.DeviceCount; //Will be slightly off if the buffer size isn't a multiple of the device count for some reason.
 
 	uint32_t startTimeTicks = cycle == 0 ? startOffsetTicks : cycleEndTimes[cycle - 1];
-	uint32_t startTimeUs = TicksToSubSecond(htim, startTimeTicks, NANOSECOND_DIVIDER);
-	uint32_t endTimeUs = TicksToSubSecond(htim, cycleEndTimes[cycle], NANOSECOND_DIVIDER);
+	uint32_t startTimeUs = TicksToSubSecond(htim, startTimeTicks, MICROSECOND_DIVIDER);
+	uint32_t endTimeUs = TicksToSubSecond(htim, cycleEndTimes[cycle], MICROSECOND_DIVIDER);
 
 
 	samplePacketHeader header;
@@ -113,7 +113,7 @@ void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams params, uin
 	for(int i = 0; i < samplesPerDevice; i ++)
 	{
 		deviceSamples[i] = cycleSamples[i * params.DeviceCount + deviceID];
-		//deviceSamples[i] = 5; //Just testing OOB.
+		//deviceSamples[i] = 3400; //Just testing OOB.
 	}
 
 	//SendSampleDataCommand(hi2c, &deviceSamples, samplesPerDevice);

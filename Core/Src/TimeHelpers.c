@@ -2,8 +2,6 @@
 
 #include "TimeHelpers.h"
 
-#define NANOSECOND_DIVIDER 1000000000
-
 
 uint32_t TicksToSubSecond(TIM_HandleTypeDef htim, uint32_t ticks, double fractionOfSecond)
 {
