@@ -27,7 +27,7 @@ void ReceiveSampleParamsCommand(I2C_HandleTypeDef *hi2c, sampleParams *outParams
 	*outSetState = 1;
 }
 
-void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, sampleParams params, uint16_t** transferBuffers, int *startedFlag, int *currentCycleCount)
+void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, uint32_t bufferLength, int *finishedFlag, int *currentCycleCount)
 {
 	/*
 	if(startedFlag == 1)
@@ -35,10 +35,11 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, s
 		return; //TODO: Throw error.
 	}
 	*/
-	//Currently doing most logic in main file for debugging. TODO: Fix that.
-	*currentCycleCount = 0;
 
-	*startedFlag = 1;
+	*currentCycleCount = 0;
+	*finishedFlag = 0;
+
+	HAL_ADC_Start_DMA(hadc, adcBuffer, bufferLength);
 }
 
 void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c, int isFinished)
@@ -105,8 +106,11 @@ void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams params, int
 
 	for(int i = 0; i < samplesPerDevice; i ++)
 	{
-		deviceSamples[i] = cycleSamples[i * deviceCount + deviceID];
+		//deviceSamples[i] = cycleSamples[i * deviceCount + deviceID];
 		//deviceSamples[i] = 3400; //Just testing OOB.
+
+		deviceSamples[i] = deviceID * 100; //TEST identifying ID. Can identify IDs on graph by values this way.
+
 	}
 
 	//SendSampleDataCommand(hi2c, &deviceSamples, samplesPerDevice);
