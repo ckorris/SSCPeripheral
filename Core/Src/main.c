@@ -40,6 +40,16 @@
 /* USER CODE BEGIN PD */
 #define COMMAND_BUF_SIZE 1
 
+#define DEVICE_COUNT_ADC1 16
+#define DEVICE_COUNT_ADC3 8
+
+#define BUFFER_SIZE_PER_DEVICE 300 //The buffer size is this times the total number of devices.
+
+#define ADC1_BUFFER_LENGTH DEVICE_COUNT_ADC1 * BUFFER_SIZE_PER_DEVICE //How much space is allocated in the transfer buffers for ADC1, which tells ADC3 where to copy its values.
+
+#define ADC3_BUFFER_LENGTH DEVICE_COUNT_ADC3 * BUFFER_SIZE_PER_DEVICE //How much space is allocated in the transfer buffers for ADC1, which tells ADC3 where to copy its values.
+
+#define TOTAL_ADC_BUFFER_LENGTH DEVICE_COUNT_ADC1 * DEVICE_COUNT_ADC3 * BUFFER_SIZE_PER_DEVICE
 
 /* USER CODE END PD */
 
@@ -50,7 +60,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc3;
 DMA_HandleTypeDef hdma_adc1;
+DMA_HandleTypeDef hdma_adc3;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -78,7 +90,8 @@ int hasFinishedSampling = 0; //1 When DMA sampling started and concluded, and a 
 
 
 //From original, somewhat modified.
-uint16_t* adc_buf; //Pointer to array that will be made for ADC as a buffer.
+uint16_t* adc1_buf; //Pointer to array that will be made for ADC 1 as a buffer.
+uint16_t* adc3_buf; //Pointer to array that will be made for ADC 3 as a buffer.
 uint16_t** transmitBuffers; //Filled with data from adc_buf as it completes, and remains until cleared.
 
 //Timing
@@ -99,6 +112,7 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_ADC3_Init(void);
 /* USER CODE BEGIN PFP */
 
 void PrintUARTMessage(UART_HandleTypeDef *huart, const char message[]);
@@ -145,6 +159,7 @@ int main(void)
   MX_I2C1_Init();
   MX_ADC1_Init();
   MX_TIM2_Init();
+  MX_ADC3_Init();
   /* USER CODE BEGIN 2 */
 
   //Make sure blue is reset, so we know we're not a host.
@@ -161,6 +176,7 @@ int main(void)
 
   HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
 
+  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -209,7 +225,7 @@ int main(void)
 		  //uint16_t newBuf[params.BufferSize]; //Doing elsewhere now.
 		  //adc_buf = newBuf;
 		  firstCycleStartTicks = ReadCurrentTicks(htim2);
-		  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buf, params.BufferSize);
+		  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
 		  hasStartedSampling = 1;
 		  hasFinishedSampling = 0;
 		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
@@ -456,6 +472,112 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief ADC3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC3_Init(void)
+{
+
+  /* USER CODE BEGIN ADC3_Init 0 */
+
+  /* USER CODE END ADC3_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC3_Init 1 */
+
+  /* USER CODE END ADC3_Init 1 */
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc3.Instance = ADC3;
+  hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc3.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc3.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc3.Init.ContinuousConvMode = ENABLE;
+  hadc3.Init.DiscontinuousConvMode = DISABLE;
+  hadc3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc3.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc3.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc3.Init.NbrOfConversion = 8;
+  hadc3.Init.DMAContinuousRequests = ENABLE;
+  hadc3.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+  if (HAL_ADC_Init(&hadc3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_4;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_5;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_6;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_7;
+  sConfig.Rank = ADC_REGULAR_RANK_4;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_8;
+  sConfig.Rank = ADC_REGULAR_RANK_5;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Rank = ADC_REGULAR_RANK_6;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_14;
+  sConfig.Rank = ADC_REGULAR_RANK_7;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_15;
+  sConfig.Rank = ADC_REGULAR_RANK_8;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC3_Init 2 */
+
+  /* USER CODE END ADC3_Init 2 */
+
+}
+
+/**
   * @brief I2C1 Initialization Function
   * @param None
   * @retval None
@@ -642,6 +764,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
 
 }
 
@@ -656,6 +781,7 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -716,11 +842,6 @@ static void MX_GPIO_Init(void)
 
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-	  //HAL_I2C_Slave_Receive_IT(&hi2c1, commandBuf, COMMAND_BUF_SIZE);
-
-
-
-
 	enum CommandType cType = (enum CommandType)commandBuf[0];
 
 	switch(cType)
@@ -730,7 +851,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		//TODO: Move all buffer clearing and re-allocaiton into receive command.
 		if(paramsSet == 1)
 		{
-			free(adc_buf);
+			free(adc1_buf);
 			for(int i = 0; i < params.CycleCount; i++)
 			{
 				free(transmitBuffers[i]); //For soooome reason this causes a hard fault at the second run.
@@ -743,11 +864,12 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 
 		//Try allocating buffer here
 		//Doing it slower now to be safe. TODO: Make faster with malloc.
-		adc_buf = calloc(params.BufferSize, sizeof(uint16_t)); //Maybe needs to be 32?
+		adc1_buf = calloc(ADC1_BUFFER_LENGTH, sizeof(uint16_t)); //Maybe needs to be 32?
 		transmitBuffers = calloc(params.CycleCount, sizeof(uint16_t*));
 		for(int i = 0; i < params.CycleCount; i++)
 		{
-			transmitBuffers[i] = calloc(params.BufferSize, sizeof(uint16_t));
+			//transmitBuffers[i] = calloc(params.BufferSize, sizeof(uint16_t));
+			transmitBuffers[i] = calloc(TOTAL_ADC_BUFFER_LENGTH, sizeof(uint16_t));
 		}
 		cycleEndTimes = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 
@@ -759,17 +881,21 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		if(hasStartedSampling == 0)
 		{
 			ResetClock(htim2);
-			ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc_buf, params, transmitBuffers, &needToStartSampling, &currentCycle);
+			ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc1_buf, params, transmitBuffers, &needToStartSampling, &currentCycle);
 		}
 		break;
 	case CheckFinished:
 		ReceiveCheckFinishedCommand(hi2c, hasFinishedSampling);
 		break;
+	case RequestTotalPacketCount: ;
+		uint16_t totalPackets = params.CycleCount * (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3);
+		ReceiveRequestTotalPacketCount(hi2c, totalPackets);
+		break;
 	case RequestSampleHeader:
-		ReceiveRequestSampleHeaderCommand(hi2c, params, htim2, firstCycleStartTicks, cycleEndTimes);
+		ReceiveRequestSampleHeaderCommand(hi2c, params, (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3), BUFFER_SIZE_PER_DEVICE, htim2, firstCycleStartTicks, cycleEndTimes);
 		break;
 	case RequestSampleData:
-		ReceiveRequestDataCommand(hi2c, params, transmitBuffers);
+		ReceiveRequestDataCommand(hi2c, params, (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3), BUFFER_SIZE_PER_DEVICE, transmitBuffers);
 		break;
 	}
 
@@ -784,13 +910,30 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	if(hasStartedSampling == 1 && hasFinishedSampling == 0)
 	{
-		//This code gets really weird results even if I tweak it. I apparently can't assign a uint16_t to a uint16_t.
-		uint16_t bufferSize = params.BufferSize;
+
+		//uint16_t bufferSize = TOTAL_ADC_BUFFER_LENGTH;
+		uint16_t bufferSize;
+		uint16_t bufferOffset;
+		uint16_t* buffer;
+
+		if(hadc == &hadc1)
+		{
+			bufferSize = ADC1_BUFFER_LENGTH;
+			bufferOffset = 0;
+			buffer = adc1_buf;
+		}
+		else if (hadc == &hadc3)
+		{
+			bufferSize = ADC3_BUFFER_LENGTH;
+			bufferOffset = ADC1_BUFFER_LENGTH;
+			buffer = adc3_buf;
+		}
+
 		int halfBufferLength = (int)bufferSize / 2;
 
 		for(short i = 0; i < halfBufferLength; i++)
 		{
-			transmitBuffers[currentCycle][i] = adc_buf[i];
+			transmitBuffers[currentCycle][bufferOffset + i] = buffer[i];
 			//transmitBuffers[currentCycle][i] = 5;
 		}
 	}
@@ -801,15 +944,32 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	if(hasStartedSampling == 1 && hasFinishedSampling == 0)
 	{
-		//Log end time in ticks.
-		cycleEndTimes[currentCycle] = ReadCurrentTicks(htim2);
+		uint16_t bufferSize;
+		uint16_t bufferOffset;
+		uint16_t* buffer;
 
-		int halfBufferLength = params.BufferSize / 2;
-
-
-		for(int i = halfBufferLength; i < params.BufferSize; i++)
+		if(hadc == &hadc1)
 		{
-			transmitBuffers[currentCycle][i] = adc_buf[i];
+			bufferSize = ADC1_BUFFER_LENGTH;
+			bufferOffset = 0;
+			buffer = adc1_buf;
+		}
+		else if (hadc == &hadc3)
+		{
+			bufferSize = ADC3_BUFFER_LENGTH;
+			bufferOffset = ADC1_BUFFER_LENGTH;
+			buffer = adc3_buf;
+		}
+
+		//Log end time in ticks.
+		cycleEndTimes[currentCycle] = ReadCurrentTicks(htim2); //TODO: Split into the two ADCs. Will be way off otherwise.
+
+		//int halfBufferLength = params.BufferSize / 2;
+		int halfBufferLength = bufferSize / 2;
+
+		for(int i = halfBufferLength; i < bufferSize; i++)
+		{
+			transmitBuffers[currentCycle][bufferOffset + i] = buffer[i];
 		}
 
 
@@ -817,6 +977,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 		if(currentCycle == params.CycleCount)
 		{
+			//TODO: Manage fact that two ADCs are on now. Otherwise will be way off.
 		  	HAL_ADC_Stop_DMA(hadc);
 		  	hasStartedSampling = 0;
 			hasFinishedSampling = 1;

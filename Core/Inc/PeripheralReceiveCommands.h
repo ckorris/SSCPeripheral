@@ -10,9 +10,11 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, s
 
 void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c, int isFinished);
 
-void ReceiveRequestSampleHeaderCommand(I2C_HandleTypeDef *hi2c, sampleParams params, TIM_HandleTypeDef htim, uint32_t startOffsetTicks, uint32_t* cycleEndTimes);
+void ReceiveRequestTotalPacketCount(I2C_HandleTypeDef *hi2c, uint16_t count);
 
-void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams params, uint16_t** transmitBuffers);
+void ReceiveRequestSampleHeaderCommand(I2C_HandleTypeDef *hi2c, sampleParams params, int deviceCount, int samplesPerDevice, TIM_HandleTypeDef htim, uint32_t startOffsetTicks, uint32_t* cycleEndTimes);
+
+void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams params, int deviceCount, int samplesPerDevice, uint16_t** transmitBuffers);
 
 
 ;
