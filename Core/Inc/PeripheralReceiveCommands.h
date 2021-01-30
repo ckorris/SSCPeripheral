@@ -12,9 +12,9 @@ void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c, int isFinished);
 
 void ReceiveRequestTotalPacketCount(I2C_HandleTypeDef *hi2c, uint16_t count);
 
-void ReceiveRequestSampleHeaderCommand(I2C_HandleTypeDef *hi2c, sampleParams params, int deviceCount, int samplesPerDevice, TIM_HandleTypeDef htim, uint32_t startOffsetTicks, uint32_t* cycleEndTimes);
+void ReceiveRequestSampleHeaderCommand(I2C_HandleTypeDef *hi2c, samplePacketHeader** processedHeaders);
 
-void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, sampleParams params, int deviceCount, int samplesPerDevice, uint16_t** transmitBuffers);
+void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, uint16_t** processedSamples, int samplesPerDevice);
 
 
 ;

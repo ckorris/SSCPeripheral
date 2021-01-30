@@ -43,13 +43,15 @@
 #define DEVICE_COUNT_ADC1 16
 #define DEVICE_COUNT_ADC3 8
 
+#define TOTAL_DEVICE_COUNT (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3)
+
 #define BUFFER_SIZE_PER_DEVICE 16 //The buffer size is this times the total number of devices.
 
-#define ADC1_BUFFER_LENGTH DEVICE_COUNT_ADC1 * BUFFER_SIZE_PER_DEVICE //How much space is allocated in the transfer buffers for ADC1, which tells ADC3 where to copy its values.
+#define ADC1_BUFFER_LENGTH (DEVICE_COUNT_ADC1 * BUFFER_SIZE_PER_DEVICE) //How much space is allocated in the transfer buffers for ADC1, which tells ADC3 where to copy its values.
 
-#define ADC3_BUFFER_LENGTH DEVICE_COUNT_ADC3 * BUFFER_SIZE_PER_DEVICE //How much space is allocated in the transfer buffers for ADC1, which tells ADC3 where to copy its values.
+#define ADC3_BUFFER_LENGTH (DEVICE_COUNT_ADC3 * BUFFER_SIZE_PER_DEVICE) //How much space is allocated in the transfer buffers for ADC1, which tells ADC3 where to copy its values.
 
-#define TOTAL_ADC_BUFFER_LENGTH DEVICE_COUNT_ADC1 * DEVICE_COUNT_ADC3 * BUFFER_SIZE_PER_DEVICE
+#define TOTAL_ADC_BUFFER_LENGTH (DEVICE_COUNT_ADC1 * DEVICE_COUNT_ADC3 * BUFFER_SIZE_PER_DEVICE)
 
 /* USER CODE END PD */
 
@@ -95,11 +97,16 @@ int hasFinishedSampling()
 	return (hasFinishedSampling_ADC1 == 1 && hasFinishedSampling_ADC3 == 1);
 }
 
+int hasProcessedFinishedSamples = 0; //True after sampling has finished and we've made them into sample packets ready for collection.
+
 //From original, somewhat modified.
 uint16_t* adc1_buf; //Pointer to array that will be made for ADC 1 as a buffer.
 uint16_t* adc3_buf; //Pointer to array that will be made for ADC 3 as a buffer.
 uint16_t** transmitBuffers_ADC1; //Filled with data from adc1_buf as it completes, and remains until cleared.
 uint16_t** transmitBuffers_ADC3; //Filled with data from adc3_buf as it completes, and remains until cleared.
+
+samplePacketHeader** processedHeaders;
+uint16_t** processedSamples;
 
 //Timing
 //uint32_t startTicks; //Clock at the moment that we received the command to start sampling.
@@ -204,8 +211,100 @@ int main(void)
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 		  */
 		  needToListenAgain = 0;
+	  }
 
 
+	  if((hasFinishedSampling() == 1 && hasProcessedFinishedSamples == 0))
+	  //if(hasFinishedSampling_ADC1 == 1 && hasFinishedSampling_ADC3 == 1 && hasProcessedFinishedSamples == 0)
+	  {
+		  //TODO: Move to own method.
+
+		  //TODO: Free and allocate the arrays when we get the sample params. We need both old and new params to do this.
+		  //int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
+
+		  for(int cycle = 0; cycle < params.CycleCount; cycle ++)
+		  {
+
+			  //First copy from ADC1.
+			  for(int device = 0; device < DEVICE_COUNT_ADC1; device++)
+			  {
+				  int sampleID = cycle * TOTAL_DEVICE_COUNT + device;
+
+				  uint32_t startTimeTicks = cycle == 0 ? firstCycleStartTicks : cycleEndTimes_ADC1[cycle - 1];
+				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
+				  uint32_t endTimeUs = TicksToSubSecond(htim2, cycleEndTimes_ADC1[cycle], MICROSECOND_DIVIDER);
+
+				  //processedHeaders[sampleID] = malloc(sizeof(samplePacketHeader)); //Moving to when receiving params.
+				  samplePacketHeader* header = processedHeaders[sampleID];
+				  header->DeviceID = device;
+				  header->SampleID = sampleID;
+				  header->startTimeUs = startTimeUs;
+				  header->endTimeUs = endTimeUs;
+				  header->AnalogInPinCount = TOTAL_DEVICE_COUNT;
+				  header->SampleCount = BUFFER_SIZE_PER_DEVICE;
+
+				  processedHeaders[sampleID] = header;
+
+
+				  for(int i = 0; i < BUFFER_SIZE_PER_DEVICE; i++)
+				  {
+					  //deviceSamples[i] = cycleSamples[i * deviceCount + deviceID];
+					  //processedSamples[sampleID] = transmitBuffers_ADC1[transferBufferIndex];
+					  processedSamples[sampleID][i] = transmitBuffers_ADC1[cycle][i * DEVICE_COUNT_ADC1 + device];
+				  }
+
+
+				  //DEBUG
+				  samplePacketHeader debugHeader = *processedHeaders[sampleID];
+
+			  }
+
+			  //Now ADC3.
+			  for(int device = 0; device < DEVICE_COUNT_ADC3; device++)
+			  {
+				  int deviceID = DEVICE_COUNT_ADC1 + device;
+				  int sampleID = cycle * TOTAL_DEVICE_COUNT + deviceID;
+
+				  uint32_t startTimeTicks = cycle == 0 ? firstCycleStartTicks : cycleEndTimes_ADC3[cycle - 1];
+				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
+				  uint32_t endTimeUs = TicksToSubSecond(htim2, cycleEndTimes_ADC3[cycle], MICROSECOND_DIVIDER);
+
+
+				  processedHeaders[sampleID] = malloc(sizeof(samplePacketHeader));
+				  samplePacketHeader* header = processedHeaders[sampleID];
+				  header->DeviceID = deviceID;
+				  header->SampleID = sampleID;
+				  header->startTimeUs = startTimeUs;
+				  header->endTimeUs = endTimeUs;
+				  header->AnalogInPinCount = TOTAL_DEVICE_COUNT;
+				  header->SampleCount = BUFFER_SIZE_PER_DEVICE;
+
+				  //processedHeaders[sampleID] = header;
+				  //processedSamples[sampleID] = transmitBuffers_ADC1[transferBufferIndex];
+				  for(int i = 0; i < BUFFER_SIZE_PER_DEVICE; i++)
+				  {
+					  processedSamples[sampleID][i] = transmitBuffers_ADC3[cycle][i * DEVICE_COUNT_ADC3 + device];
+				  }
+			  }
+		  }
+
+		  //Debug
+		  int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
+		  samplePacketHeader debugHeaders[totalSamples];
+		  uint16_t debugSamples[totalSamples][BUFFER_SIZE_PER_DEVICE];
+		  for(int i = 0; i < totalSamples; i++)
+		  {
+			  samplePacketHeader header = *processedHeaders[i];
+			  debugHeaders[i] = header;
+			  for(int j = 0; j < BUFFER_SIZE_PER_DEVICE; j++)
+			  {
+				  debugSamples[i][j] = processedSamples[i][j];
+			  }
+ 		  }
+
+		  hasProcessedFinishedSamples = 1;
+
+		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 	  }
 
 
@@ -227,21 +326,6 @@ int main(void)
 		  needToFlashBlue = 0;
 	  }
 
-	  /*
-	  //Temp.
-	  if(needToStartSampling == 1 && hasStartedSampling == 0)
-	  {
-		  needToStartSampling = 0;
-
-		  //uint16_t newBuf[params.BufferSize]; //Doing elsewhere now.
-		  //adc_buf = newBuf;
-		  firstCycleStartTicks = ReadCurrentTicks(htim2);
-		  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
-		  hasStartedSampling = 1;
-		  hasFinishedSampling = 0;
-		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-	  }
-		*/
 
     /* USER CODE END WHILE */
 
@@ -874,6 +958,12 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			free(transmitBuffers_ADC3);
 			free(cycleEndTimes_ADC3);
 
+			int oldTotalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
+			for(int i = 0; i < oldTotalPacketCount; i++)
+			{
+				free(processedHeaders[i]); //Might be able to free the root array too.
+				free(processedSamples[i]);
+			}
 		}
 		ReceiveSampleParamsCommand(hi2c, &params, &paramsSet);
 
@@ -899,6 +989,15 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		cycleEndTimes_ADC1 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 		cycleEndTimes_ADC3 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 
+		int totalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
+		processedHeaders = calloc(totalPacketCount, sizeof(samplePacketHeader*));
+		processedSamples = calloc(totalPacketCount, sizeof(uint16_t*));
+		for(int i = 0; i < totalPacketCount; i++)
+		{
+			processedHeaders[i] = malloc(sizeof(samplePacketHeader)); //Shouldn't need but we'll see.
+			processedSamples[i] = calloc(BUFFER_SIZE_PER_DEVICE, sizeof(uint16_t));
+		}
+
 		needToFlashRed = 1;
 		//HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
@@ -906,39 +1005,30 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	case BeginSampling:
 		if(hasStartedSampling == 0)
 		{
-
-
-
-			//TEST
-			//Temp.
-			if(hasStartedSampling == 0)
-			{
 			  needToStartSampling = 0;
-
-			  //uint16_t newBuf[params.BufferSize]; //Doing elsewhere now.
-			  //adc_buf = newBuf;
 			  ResetClock(htim2);
 			  firstCycleStartTicks = ReadCurrentTicks(htim2);
 			  ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH, &hasFinishedSampling_ADC1, &currentCycle_ADC1);
-			  ReceiveBeginSamplingCommand(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH, &hasFinishedSampling_ADC3, &currentCycle_ADC3);
+			  ReceiveBeginSamplingCommand(&hadc3, (uint32_t*)adc3_buf, ADC3_BUFFER_LENGTH, &hasFinishedSampling_ADC3, &currentCycle_ADC3);
 			  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
 			  hasStartedSampling = 1;
 			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-			}
+
+			  hasProcessedFinishedSamples = 0;
 		}
 		break;
 	case CheckFinished:
-		ReceiveCheckFinishedCommand(hi2c, hasFinishedSampling());
+		ReceiveCheckFinishedCommand(hi2c, hasProcessedFinishedSamples);
 		break;
 	case RequestTotalPacketCount: ;
-		uint16_t totalPackets = params.CycleCount * (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3);
+		uint16_t totalPackets = params.CycleCount * (TOTAL_DEVICE_COUNT);
 		ReceiveRequestTotalPacketCount(hi2c, totalPackets);
 		break;
 	case RequestSampleHeader:
-		ReceiveRequestSampleHeaderCommand(hi2c, params, (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3), BUFFER_SIZE_PER_DEVICE, htim2, firstCycleStartTicks, cycleEndTimes_ADC1);
+		ReceiveRequestSampleHeaderCommand(hi2c, processedHeaders);
 		break;
 	case RequestSampleData:
-		ReceiveRequestDataCommand(hi2c, params, (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3), BUFFER_SIZE_PER_DEVICE, transmitBuffers_ADC1);
+		ReceiveRequestDataCommand(hi2c, processedSamples, BUFFER_SIZE_PER_DEVICE);
 		break;
 	}
 
@@ -956,23 +1046,25 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 
 		//uint16_t bufferSize = TOTAL_ADC_BUFFER_LENGTH;
 		uint16_t bufferSize;
-		uint16_t bufferOffset;
+		//uint16_t bufferOffset;
 		uint16_t* buffer;
 		uint16_t** transmitBuffers;
 		int* currentCycle;
 
-		if(hadc == &hadc1)
+		//if(hadc == &hadc1)
+		if(hadc == (ADC_HandleTypeDef*)&hadc1)
 		{
 			bufferSize = ADC1_BUFFER_LENGTH;
-			bufferOffset = 0;
+			//bufferOffset = 0;
 			buffer = adc1_buf;
 			transmitBuffers = transmitBuffers_ADC1;
 			currentCycle = &currentCycle_ADC1;
+
 		}
 		else  //Assume is ADC3 for compilation reasons.
 		{
 			bufferSize = ADC3_BUFFER_LENGTH;
-			bufferOffset = ADC1_BUFFER_LENGTH;
+			//bufferOffset = ADC1_BUFFER_LENGTH;
 			buffer = adc3_buf;
 			transmitBuffers = transmitBuffers_ADC3;
 			currentCycle = &currentCycle_ADC3;
@@ -982,7 +1074,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 
 		for(short i = 0; i < halfBufferLength; i++)
 		{
-			transmitBuffers[*currentCycle][bufferOffset + i] = buffer[i];
+			transmitBuffers[*currentCycle][i] = buffer[i];
 			//transmitBuffers[currentCycle][i] = 5;
 		}
 	}
@@ -994,17 +1086,19 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	if(hasStartedSampling == 1 && hasFinishedSampling() == 0)
 	{
 		uint16_t bufferSize;
-		uint16_t bufferOffset;
+		//uint16_t bufferOffset;
 		uint16_t* buffer;
 		uint32_t* cycleEndTimes;
 		uint16_t** transmitBuffers;
 		int* currentCycle;
 		int* finishedSamplingFlag;
 
-		if(hadc == &hadc1)
+
+		//if(hadc == &hadc1)
+		if(hadc == (ADC_HandleTypeDef*)&hadc1)
 		{
 			bufferSize = ADC1_BUFFER_LENGTH;
-			bufferOffset = 0;
+			//bufferOffset = 0;
 			buffer = adc1_buf;
 			cycleEndTimes = cycleEndTimes_ADC1;
 			transmitBuffers = transmitBuffers_ADC1;
@@ -1014,7 +1108,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 		else //Assume is ADC3 for compilation reasons.
 		{
 			bufferSize = ADC3_BUFFER_LENGTH;
-			bufferOffset = ADC1_BUFFER_LENGTH;
+			//bufferOffset = ADC1_BUFFER_LENGTH;
 			buffer = adc3_buf;
 			cycleEndTimes = cycleEndTimes_ADC3;
 			transmitBuffers = transmitBuffers_ADC3;
@@ -1030,22 +1124,23 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 		for(int i = halfBufferLength; i < bufferSize; i++)
 		{
-			transmitBuffers[*currentCycle][bufferOffset + i] = buffer[i];
+			transmitBuffers[*currentCycle][i] = buffer[i];
 		}
 
 
-		*currentCycle++;
+		*currentCycle += 1;
 
 		if(*currentCycle == params.CycleCount)
 		{
 			//TODO: Manage fact that two ADCs are on now. Otherwise will be way off.
 		  	HAL_ADC_Stop_DMA(hadc);
-		  	hasStartedSampling = 0;
+
 		  	*finishedSamplingFlag = 1;
 
 		  	//If this one finishing means that both are finished, flash LED.
 		  	if(hasFinishedSampling() == 1)
 		  	{
+			  	hasStartedSampling = 0;
 		  		needToFlashBlue = 1;
 		  	}
 		}
