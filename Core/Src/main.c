@@ -45,7 +45,7 @@
 
 #define TOTAL_DEVICE_COUNT (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3)
 
-#define BUFFER_SIZE_PER_DEVICE 16 //The buffer size is this times the total number of devices.
+#define BUFFER_SIZE_PER_DEVICE 512 //The buffer size is this times the total number of devices.
 
 #define ADC1_BUFFER_LENGTH (DEVICE_COUNT_ADC1 * BUFFER_SIZE_PER_DEVICE) //How much space is allocated in the transfer buffers for ADC1, which tells ADC3 where to copy its values.
 
