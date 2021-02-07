@@ -46,7 +46,7 @@
 
 #define TOTAL_DEVICE_COUNT (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3)
 
-#define BUFFER_SIZE_PER_DEVICE 256 //The buffer size is this times the total number of devices.
+#define BUFFER_SIZE_PER_DEVICE 1024 //The buffer size is this times the total number of devices.
 
 #define ADC1_BUFFER_LENGTH (DEVICE_COUNT_ADC1 * BUFFER_SIZE_PER_DEVICE) //How much space is allocated in the transfer buffers for ADC1, which tells ADC3 where to copy its values.
 
@@ -112,12 +112,7 @@ samplePacketHeader** processedHeaders;
 uint16_t** processedSamples;
 
 //Timing
-//uint32_t startTicks; //Clock at the moment that we received the command to start sampling.
-//uint32_t cycleEndTimes[CYCLE_COUNT];
-//uint32_t firstCycleStartTicks_ADC1; //Clock at the moment we started the ADCs. May be different than startTicks if a delay was requested, plus setup time.
-//uint32_t firstCycleStartTicks_ADC3;
-uint32_t* cycleEndTimes_ADC1;
-uint32_t* cycleEndTimes_ADC3;
+
 //int currentCycle = 0;
 
 //int currentCycle_ADC1 = 0;
@@ -250,6 +245,19 @@ int main(void)
 		  //TODO: Free and allocate the arrays when we get the sample params. We need both old and new params to do this.
 		  //int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
 
+		  //DEBUG start times.
+		  uint32_t endTimes1[params.CycleCount];
+		  for(int i = 0; i < params.CycleCount; i++)
+		  {
+			  endTimes1[i] = CycleEndTimes(ADC_1)[i];
+		  }
+		  uint32_t endTimes3[params.CycleCount];
+		  for(int i = 0; i < params.CycleCount; i++)
+		  {
+			  endTimes3[i] = CycleEndTimes(ADC_3)[i];
+		  }
+
+
 		  for(int cycle = 0; cycle < params.CycleCount; cycle ++)
 		  {
 
@@ -258,9 +266,9 @@ int main(void)
 			  {
 				  int sampleID = cycle * TOTAL_DEVICE_COUNT + device;
 
-				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_1) : cycleEndTimes_ADC1[cycle - 1];
+				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_1) : CycleEndTimes(ADC_1)[cycle - 1];
 				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
-				  uint32_t endTimeUs = TicksToSubSecond(htim2, cycleEndTimes_ADC1[cycle], MICROSECOND_DIVIDER);
+				  uint32_t endTimeUs = TicksToSubSecond(htim2, CycleEndTimes(ADC_1)[cycle], MICROSECOND_DIVIDER);
 
 				  //processedHeaders[sampleID] = malloc(sizeof(samplePacketHeader)); //Moving to when receiving params.
 				  samplePacketHeader* header = processedHeaders[sampleID];
@@ -293,9 +301,9 @@ int main(void)
 				  int deviceID = DEVICE_COUNT_ADC1 + device;
 				  int sampleID = cycle * TOTAL_DEVICE_COUNT + deviceID;
 
-				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_3) : cycleEndTimes_ADC3[cycle - 1];
+				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_3) : CycleEndTimes(ADC_3)[cycle - 1];
 				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
-				  uint32_t endTimeUs = TicksToSubSecond(htim2, cycleEndTimes_ADC3[cycle], MICROSECOND_DIVIDER);
+				  uint32_t endTimeUs = TicksToSubSecond(htim2, CycleEndTimes(ADC_3)[cycle], MICROSECOND_DIVIDER);
 
 
 				  processedHeaders[sampleID] = malloc(sizeof(samplePacketHeader));
@@ -317,7 +325,7 @@ int main(void)
 		  }
 
 		  //Debug
-		  /*
+
 		  int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
 		  samplePacketHeader debugHeaders[totalSamples];
 		  uint16_t debugSamples[totalSamples][BUFFER_SIZE_PER_DEVICE];
@@ -330,7 +338,7 @@ int main(void)
 				  debugSamples[i][j] = processedSamples[i][j];
 			  }
  		  }
- 		  */
+
 
 		  hasProcessedFinishedSamples = 1;
 
@@ -1027,9 +1035,9 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 				free(transmitBuffers_ADC3[i]);
 			}
 			free(transmitBuffers_ADC1);
-			free(cycleEndTimes_ADC1);
+			free(*CycleEndTimes(ADC_1));
 			free(transmitBuffers_ADC3);
-			free(cycleEndTimes_ADC3);
+			free(*CycleEndTimes(ADC_3));
 
 			int oldTotalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
 			for(int i = 0; i < oldTotalPacketCount; i++)
@@ -1056,8 +1064,27 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			transmitBuffers_ADC3[i] = calloc(ADC3_BUFFER_LENGTH, sizeof(uint16_t));
 		}
 
-		cycleEndTimes_ADC1 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
-		cycleEndTimes_ADC3 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
+		uint32_t** endTimesadc1 = CycleEndTimes(ADC_1);
+		//*endTimesadc1 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
+		*CycleEndTimes(ADC_1) = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
+		uint32_t** endTimesadc3 = CycleEndTimes(ADC_3);
+		*endTimesadc3 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
+
+		*CycleEndTimes(ADC_1)[0] = 41;
+		//*endTimesadc1[0] = 41;
+		*endTimesadc3[0] = 42;
+		*endTimesadc1[1] = 51;
+		*endTimesadc3[1] = 52;
+
+		//TEST
+		//This is leaking weird. Fix.
+
+		uint32_t** endTimesAgainadc1 = CycleEndTimes(ADC_1);
+
+		uint32_t adc1_0 = *CycleEndTimes(ADC_1)[0];
+		uint32_t adc1_1 = *CycleEndTimes(ADC_1)[1];
+		uint32_t adc3_0 = *endTimesadc3[0]; //This is the same as above it.
+		uint32_t adc3_1 = *endTimesadc3[1]; //This is empty.
 
 		int totalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
 		processedHeaders = calloc(totalPacketCount, sizeof(samplePacketHeader*));
@@ -1080,7 +1107,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 
 			  ReceiveBeginSamplingCommand(&hadc1, transmitBuffers_ADC1, ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
 			  *FirstCycleStartTicks(ADC_1) = ReadCurrentTicks(htim2);
-			  ReceiveBeginSamplingCommand(&hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_3));
+			  ReceiveBeginSamplingCommand(&hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_3), CurrentCycle(ADC_3));
 			  *FirstCycleStartTicks(ADC_3) = ReadCurrentTicks(htim2);
 			  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
 			  hasStartedSampling = 1;
@@ -1116,8 +1143,13 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 	{
 		enum ADCNumber adcNumber = GetADCEnumVal(hadc);
 
+		if(*HasFinishedSampling(adcNumber) == 1)
+		{
+			return;
+		}
 
-		uint32_t* cycleEndTimes;
+		uint32_t nowTicks = ReadCurrentTicks(htim2);
+
 		uint16_t** transmitBuffers;
 		int* currentCycle;
 		//int* finishedSamplingFlag;
@@ -1125,7 +1157,6 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 		//if(hadc == &hadc1)
 		if(hadc == (ADC_HandleTypeDef*)&hadc1)
 		{
-			cycleEndTimes = cycleEndTimes_ADC1;
 			transmitBuffers = transmitBuffers_ADC1;
 			//currentCycle = &currentCycle_ADC1;
 			currentCycle = CurrentCycle(ADC_1);
@@ -1133,16 +1164,16 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 		}
 		else //Assume is ADC3 for compilation reasons.
 		{
-			cycleEndTimes = cycleEndTimes_ADC3;
 			transmitBuffers = transmitBuffers_ADC3;
 			currentCycle = CurrentCycle(ADC_3);
 			//finishedSamplingFlag = &hasFinishedSampling_ADC3;
 		}
 
 		//Log end time in ticks.
-		cycleEndTimes[*currentCycle] = ReadCurrentTicks(htim2);
+		CycleEndTimes(adcNumber)[*currentCycle] = nowTicks;
 
-		*currentCycle += 1;
+		//*currentCycle += 1;
+		*currentCycle = *currentCycle + 1;
 
 		if(*currentCycle < params.CycleCount - 1)
 		{

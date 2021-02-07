@@ -21,6 +21,10 @@ uint32_t firstCycleStartTicks_ADC1; //Clock at the moment we started the ADCs. M
 uint32_t firstCycleStartTicks_ADC2;
 uint32_t firstCycleStartTicks_ADC3;
 
+uint32_t* cycleEndTimes_ADC1;
+uint32_t* cycleEndTimes_ADC2;
+uint32_t* cycleEndTimes_ADC3;
+
 void InitADCHelper(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2, ADC_HandleTypeDef* adc3)
 {
 	_hadc1 = adc1;
@@ -87,9 +91,24 @@ uint32_t* FirstCycleStartTicks(enum ADCNumber adcNum)
 	case ADC_1:
 		return &firstCycleStartTicks_ADC1;
 	case ADC_2:
-		return &firstCycleStartTicks_ADC1;
+		return &firstCycleStartTicks_ADC2;
 	case ADC_3:
-		return &firstCycleStartTicks_ADC1;
+		return &firstCycleStartTicks_ADC3;
+	default:
+		return 0;
+	}
+}
+
+uint32_t** CycleEndTimes(enum ADCNumber adcNum)
+{
+	switch(adcNum)
+	{
+	case ADC_1:
+		return &cycleEndTimes_ADC1;
+	case ADC_2:
+		return &cycleEndTimes_ADC2;
+	case ADC_3:
+		return &cycleEndTimes_ADC3;
 	default:
 		return 0;
 	}

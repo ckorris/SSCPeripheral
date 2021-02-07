@@ -13,3 +13,5 @@ int* CurrentCycle(enum ADCNumber adcNum);
 int* HasFinishedSampling(enum ADCNumber adcNum);
 
 uint32_t* FirstCycleStartTicks(enum ADCNumber adcNum);
+
+uint32_t** CycleEndTimes(enum ADCNumber adcNum);
