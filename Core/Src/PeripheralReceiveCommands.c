@@ -27,7 +27,7 @@ void ReceiveSampleParamsCommand(I2C_HandleTypeDef *hi2c, sampleParams *outParams
 	*outSetState = 1;
 }
 
-void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, uint32_t bufferLength, int *finishedFlag, int *currentCycleCount)
+void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint16_t** transmitBuffers, uint32_t bufferLength, int *finishedFlag, int *currentCycleCount)
 {
 	/*
 	if(startedFlag == 1)
@@ -39,7 +39,9 @@ void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, u
 	*currentCycleCount = 0;
 	*finishedFlag = 0;
 
-	HAL_ADC_Start_DMA(hadc, adcBuffer, bufferLength);
+	hadc->DMA_Handle->Instance->M1AR = (uint32_t)transmitBuffers[1]; //Apply second buffer address. That and the first one will be updated on each pass.
+
+	HAL_ADC_Start_DMA(hadc, (uint32_t*)transmitBuffers[0], bufferLength);
 }
 
 void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c, int isFinished)

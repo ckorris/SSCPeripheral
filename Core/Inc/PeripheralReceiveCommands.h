@@ -6,7 +6,7 @@
 
 void ReceiveSampleParamsCommand(I2C_HandleTypeDef *hi2c, sampleParams *outParams, int *outSetState); //Outs are for setting main file values.
 
-void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint32_t* adcBuffer, uint32_t bufferLength, int *finishedFlag, int *currentCycleCount);
+void ReceiveBeginSamplingCommand(ADC_HandleTypeDef* hadc, uint16_t** transmitBuffers, uint32_t bufferLength, int *finishedFlag, int *currentCycleCount);
 
 void ReceiveCheckFinishedCommand(I2C_HandleTypeDef *hi2c, int isFinished);
 
