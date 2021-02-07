@@ -15,3 +15,5 @@ int* HasFinishedSampling(enum ADCNumber adcNum);
 uint32_t* FirstCycleStartTicks(enum ADCNumber adcNum);
 
 uint32_t** CycleEndTimes(enum ADCNumber adcNum);
+
+uint16_t*** TransmitBuffer(enum ADCNumber adcNum);

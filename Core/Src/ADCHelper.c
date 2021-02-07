@@ -25,6 +25,10 @@ uint32_t* cycleEndTimes_ADC1;
 uint32_t* cycleEndTimes_ADC2;
 uint32_t* cycleEndTimes_ADC3;
 
+uint16_t** transmitBuffers_ADC1; //Filled with data from adc1_buf as it completes, and remains until cleared.
+uint16_t** transmitBuffers_ADC2;
+uint16_t** transmitBuffers_ADC3;
+
 void InitADCHelper(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2, ADC_HandleTypeDef* adc3)
 {
 	_hadc1 = adc1;
@@ -109,6 +113,21 @@ uint32_t** CycleEndTimes(enum ADCNumber adcNum)
 		return &cycleEndTimes_ADC2;
 	case ADC_3:
 		return &cycleEndTimes_ADC3;
+	default:
+		return 0;
+	}
+}
+
+uint16_t*** TransmitBuffer(enum ADCNumber adcNum)
+{
+	switch(adcNum)
+	{
+	case ADC_1:
+		return &transmitBuffers_ADC1;
+	case ADC_2:
+		return &transmitBuffers_ADC2;
+	case ADC_3:
+		return &transmitBuffers_ADC3;
 	default:
 		return 0;
 	}

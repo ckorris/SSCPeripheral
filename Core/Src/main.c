@@ -103,10 +103,8 @@ int hasFinishedSampling()
 int hasProcessedFinishedSamples = 0; //True after sampling has finished and we've made them into sample packets ready for collection.
 
 //From original, somewhat modified.
-//uint16_t* adc1_buf; //Pointer to array that will be made for ADC 1 as a buffer.
-//uint16_t* adc3_buf; //Pointer to array that will be made for ADC 3 as a buffer.
-uint16_t** transmitBuffers_ADC1; //Filled with data from adc1_buf as it completes, and remains until cleared.
-uint16_t** transmitBuffers_ADC3; //Filled with data from adc3_buf as it completes, and remains until cleared.
+//uint16_t** transmitBuffers_ADC1; //Filled with data from adc1_buf as it completes, and remains until cleared.
+//uint16_t** transmitBuffers_ADC3; //Filled with data from adc3_buf as it completes, and remains until cleared.
 
 samplePacketHeader** processedHeaders;
 uint16_t** processedSamples;
@@ -284,9 +282,8 @@ int main(void)
 
 				  for(int i = 0; i < BUFFER_SIZE_PER_DEVICE; i++)
 				  {
-					  //deviceSamples[i] = cycleSamples[i * deviceCount + deviceID];
-					  //processedSamples[sampleID] = transmitBuffers_ADC1[transferBufferIndex];
-					  processedSamples[sampleID][i] = transmitBuffers_ADC1[cycle][i * DEVICE_COUNT_ADC1 + device];
+					  //processedSamples[sampleID][i] = transmitBuffers_ADC1[cycle][i * DEVICE_COUNT_ADC1 + device];
+					  processedSamples[sampleID][i] = (*TransmitBuffer(ADC_1))[cycle][i * DEVICE_COUNT_ADC1 + device];
 				  }
 
 
@@ -319,7 +316,8 @@ int main(void)
 				  //processedSamples[sampleID] = transmitBuffers_ADC1[transferBufferIndex];
 				  for(int i = 0; i < BUFFER_SIZE_PER_DEVICE; i++)
 				  {
-					  processedSamples[sampleID][i] = transmitBuffers_ADC3[cycle][i * DEVICE_COUNT_ADC3 + device];
+					  //processedSamples[sampleID][i] = transmitBuffers_ADC3[cycle][i * DEVICE_COUNT_ADC3 + device];
+					  processedSamples[sampleID][i] = (*TransmitBuffer(ADC_3))[cycle][i * DEVICE_COUNT_ADC3 + device];
 				  }
 			  }
 		  }
@@ -1031,12 +1029,15 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		{
 			for(int i = 0; i < params.CycleCount; i++)
 			{
-				free(transmitBuffers_ADC1[i]);
-				free(transmitBuffers_ADC3[i]);
+				//free(transmitBuffers_ADC1[i]);
+				//free(transmitBuffers_ADC3[i]);
+				free((*TransmitBuffer(ADC_1))[i]);
+				free((*TransmitBuffer(ADC_3))[i]);
 			}
-			free(transmitBuffers_ADC1);
+			free(*TransmitBuffer(ADC_1));
+			free(*TransmitBuffer(ADC_3));
+
 			free(*CycleEndTimes(ADC_1));
-			free(transmitBuffers_ADC3);
 			free(*CycleEndTimes(ADC_3));
 
 			int oldTotalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
@@ -1050,18 +1051,19 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 
 		//Try allocating buffer here
 		//Doing it slower now to be safe. TODO: Make faster with malloc.
-		transmitBuffers_ADC1 = calloc(params.CycleCount, sizeof(uint16_t*));
+		//transmitBuffers_ADC1 = calloc(params.CycleCount, sizeof(uint16_t*));
+		*TransmitBuffer(ADC_1) = calloc(params.CycleCount, sizeof(uint16_t*));
 		for(int i = 0; i < params.CycleCount; i++)
 		{
-			//transmitBuffers[i] = calloc(params.BufferSize, sizeof(uint16_t));
-			transmitBuffers_ADC1[i] = calloc(ADC1_BUFFER_LENGTH, sizeof(uint16_t));
+			//transmitBuffers_ADC1[i] = calloc(ADC1_BUFFER_LENGTH, sizeof(uint16_t));
+			(*TransmitBuffer(ADC_1))[i] = calloc(ADC1_BUFFER_LENGTH, sizeof(uint16_t));
 		}
 
-		transmitBuffers_ADC3 = calloc(params.CycleCount, sizeof(uint16_t*));
+		*TransmitBuffer(ADC_3) = calloc(params.CycleCount, sizeof(uint16_t*));
 		for(int i = 0; i < params.CycleCount; i++)
 		{
-			//transmitBuffers[i] = calloc(params.BufferSize, sizeof(uint16_t));
-			transmitBuffers_ADC3[i] = calloc(ADC3_BUFFER_LENGTH, sizeof(uint16_t));
+			//transmitBuffers_ADC3[i] = calloc(ADC3_BUFFER_LENGTH, sizeof(uint16_t));
+			(*TransmitBuffer(ADC_3))[i] = calloc(ADC1_BUFFER_LENGTH, sizeof(uint16_t));
 		}
 
 		*CycleEndTimes(ADC_1) = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
@@ -1086,9 +1088,9 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			  needToStartSampling = 0;
 			  ResetClock(htim2);
 
-			  ReceiveBeginSamplingCommand(&hadc1, transmitBuffers_ADC1, ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
+			  ReceiveBeginSamplingCommand(&hadc1, (*TransmitBuffer(ADC_1)), ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
 			  *FirstCycleStartTicks(ADC_1) = ReadCurrentTicks(htim2);
-			  ReceiveBeginSamplingCommand(&hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_3), CurrentCycle(ADC_3));
+			  ReceiveBeginSamplingCommand(&hadc3, (*TransmitBuffer(ADC_3)), ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_3), CurrentCycle(ADC_3));
 			  *FirstCycleStartTicks(ADC_3) = ReadCurrentTicks(htim2);
 			  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
 			  hasStartedSampling = 1;
@@ -1131,24 +1133,19 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 
 		uint32_t nowTicks = ReadCurrentTicks(htim2);
 
-		uint16_t** transmitBuffers;
-		int* currentCycle;
-		//int* finishedSamplingFlag;
+		uint16_t** transmitBuffers = (*TransmitBuffer(adcNumber));
+		int* currentCycle = CurrentCycle(adcNumber);;
 
-		//if(hadc == &hadc1)
+		/*
 		if(hadc == (ADC_HandleTypeDef*)&hadc1)
 		{
 			transmitBuffers = transmitBuffers_ADC1;
-			//currentCycle = &currentCycle_ADC1;
-			currentCycle = CurrentCycle(ADC_1);
-			//finishedSamplingFlag = &hasFinishedSampling_ADC1;
 		}
 		else //Assume is ADC3 for compilation reasons.
 		{
 			transmitBuffers = transmitBuffers_ADC3;
-			currentCycle = CurrentCycle(ADC_3);
-			//finishedSamplingFlag = &hasFinishedSampling_ADC3;
 		}
+		*/
 
 		//Log end time in ticks.
 		(*CycleEndTimes(adcNumber))[*currentCycle] = nowTicks;
