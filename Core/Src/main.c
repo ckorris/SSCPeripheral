@@ -249,12 +249,12 @@ int main(void)
 		  uint32_t endTimes1[params.CycleCount];
 		  for(int i = 0; i < params.CycleCount; i++)
 		  {
-			  endTimes1[i] = CycleEndTimes(ADC_1)[i];
+			  endTimes1[i] = (*CycleEndTimes(ADC_1))[i];
 		  }
 		  uint32_t endTimes3[params.CycleCount];
 		  for(int i = 0; i < params.CycleCount; i++)
 		  {
-			  endTimes3[i] = CycleEndTimes(ADC_3)[i];
+			  endTimes3[i] = (*CycleEndTimes(ADC_3))[i];
 		  }
 
 
@@ -266,9 +266,9 @@ int main(void)
 			  {
 				  int sampleID = cycle * TOTAL_DEVICE_COUNT + device;
 
-				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_1) : CycleEndTimes(ADC_1)[cycle - 1];
+				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_1) : (*CycleEndTimes(ADC_1))[cycle - 1];
 				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
-				  uint32_t endTimeUs = TicksToSubSecond(htim2, CycleEndTimes(ADC_1)[cycle], MICROSECOND_DIVIDER);
+				  uint32_t endTimeUs = TicksToSubSecond(htim2, (*CycleEndTimes(ADC_1))[cycle], MICROSECOND_DIVIDER);
 
 				  //processedHeaders[sampleID] = malloc(sizeof(samplePacketHeader)); //Moving to when receiving params.
 				  samplePacketHeader* header = processedHeaders[sampleID];
@@ -301,9 +301,9 @@ int main(void)
 				  int deviceID = DEVICE_COUNT_ADC1 + device;
 				  int sampleID = cycle * TOTAL_DEVICE_COUNT + deviceID;
 
-				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_3) : CycleEndTimes(ADC_3)[cycle - 1];
+				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_3) : (*CycleEndTimes(ADC_3))[cycle - 1];
 				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
-				  uint32_t endTimeUs = TicksToSubSecond(htim2, CycleEndTimes(ADC_3)[cycle], MICROSECOND_DIVIDER);
+				  uint32_t endTimeUs = TicksToSubSecond(htim2, (*CycleEndTimes(ADC_3))[cycle], MICROSECOND_DIVIDER);
 
 
 				  processedHeaders[sampleID] = malloc(sizeof(samplePacketHeader));
@@ -1064,27 +1064,8 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			transmitBuffers_ADC3[i] = calloc(ADC3_BUFFER_LENGTH, sizeof(uint16_t));
 		}
 
-		//uint32_t** endTimesadc1 = CycleEndTimes(ADC_1);
-		//*endTimesadc1 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 		*CycleEndTimes(ADC_1) = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
-		//uint32_t** endTimesadc3 = CycleEndTimes(ADC_3);
-		//*endTimesadc3 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 		*CycleEndTimes(ADC_3) = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
-
-
-		(*CycleEndTimes(ADC_1))[0] = 412;
-		(*CycleEndTimes(ADC_1))[1] = 413;
-		(*CycleEndTimes(ADC_3))[0] = 422;
-		(*CycleEndTimes(ADC_3))[1] = 423;
-
-
-		uint32_t** endTimesAgainadc1 = CycleEndTimes(ADC_1);
-		uint32_t** endTimesAgainadc3 = CycleEndTimes(ADC_3);
-
-		uint32_t adc1_0 = (*CycleEndTimes(ADC_1))[0];
-		uint32_t adc1_1 = (*CycleEndTimes(ADC_1))[1];
-		uint32_t adc3_0 = (*CycleEndTimes(ADC_3))[0];
-		uint32_t adc3_1 = (*CycleEndTimes(ADC_3))[1];
 
 		int totalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
 		processedHeaders = calloc(totalPacketCount, sizeof(samplePacketHeader*));
@@ -1170,7 +1151,7 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 		}
 
 		//Log end time in ticks.
-		CycleEndTimes(adcNumber)[*currentCycle] = nowTicks;
+		(*CycleEndTimes(adcNumber))[*currentCycle] = nowTicks;
 
 		//*currentCycle += 1;
 		*currentCycle = *currentCycle + 1;
