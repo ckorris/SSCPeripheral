@@ -58,6 +58,36 @@ enum ADCNumber GetADCEnumVal(ADC_HandleTypeDef* hadc)
 	}
 }
 
+int DeviceCount(enum ADCNumber adcNum)
+{
+	switch(adcNum)
+	{
+	case ADC_1:
+		return DEVICE_COUNT_ADC1;
+	case ADC_2:
+		return DEVICE_COUNT_ADC2;
+	case ADC_3:
+		return DEVICE_COUNT_ADC3;
+	default:
+		return 0;
+	}
+}
+
+int BufferSize(enum ADCNumber adcNum)
+{
+	switch(adcNum)
+		{
+		case ADC_1:
+			return ADC1_BUFFER_LENGTH;
+		case ADC_2:
+			return ADC2_BUFFER_LENGTH;
+		case ADC_3:
+			return ADC3_BUFFER_LENGTH;
+		default:
+			return 0;
+		}
+}
+
 int* CurrentCycle(enum ADCNumber adcNum)
 {
 	switch(adcNum)
@@ -86,6 +116,24 @@ int* HasFinishedSampling(enum ADCNumber adcNum)
 	default:
 		return 0;
 	}
+}
+
+int AreAllADCsFinishedSampling()
+{
+	if(DEVICE_COUNT_ADC1 > 0 && hasFinishedSampling_ADC1 == 0)
+	{
+		return 0;
+	}
+	if(DEVICE_COUNT_ADC2 > 0 && hasFinishedSampling_ADC2 == 0)
+	{
+		return 0;
+	}
+	if(DEVICE_COUNT_ADC3 > 0 && hasFinishedSampling_ADC3 == 0)
+	{
+		return 0;
+	}
+
+	return 1;
 }
 
 uint32_t* FirstCycleStartTicks(enum ADCNumber adcNum)
