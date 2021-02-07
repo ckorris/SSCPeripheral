@@ -10,4 +10,4 @@ enum ADCNumber GetADCEnumVal(ADC_HandleTypeDef* hadc);
 
 int* CurrentCycle(enum ADCNumber adcNum);
 
-
+int* HasFinishedSampling(enum ADCNumber adcNum);

@@ -92,12 +92,12 @@ sampleParams params; //Configuration for collecting samples - device count, buff
 int needToStartSampling = 0; //1 when interrupt has triggered the sample to start, but that should happen in main loop.
 int hasStartedSampling = 0; //1 when DMA sampling has started and has not finished yet.
 
-int hasFinishedSampling_ADC1 = 0;
-int hasFinishedSampling_ADC3 = 0;
+//int hasFinishedSampling_ADC1 = 0;
+//int hasFinishedSampling_ADC3 = 0;
 //int hasFinishedSampling = 0; //1 When DMA sampling started and concluded, and a new sample session has not started yet.
 int hasFinishedSampling()
 {
-	return (hasFinishedSampling_ADC1 == 1 && hasFinishedSampling_ADC3 == 1);
+	return (*HasFinishedSampling(ADC_1) == 1 && *HasFinishedSampling(ADC_3) == 1);
 }
 
 int hasProcessedFinishedSamples = 0; //True after sampling has finished and we've made them into sample packets ready for collection.
@@ -232,11 +232,11 @@ int main(void)
 
 
 	  //Stop the DMA cycles if needed.
-	  if(hasFinishedSampling_ADC1 == 1 && hasProcessedFinishedSamples == 0 )
+	  if(*HasFinishedSampling(ADC_1) == 1 && hasProcessedFinishedSamples == 0 )
 	  {
 		  HAL_ADC_Stop_DMA(&hadc1);
 	  }
-	  if(hasFinishedSampling_ADC3 == 1 && hasProcessedFinishedSamples == 0 )
+	  if(*HasFinishedSampling(ADC_3) == 1 && hasProcessedFinishedSamples == 0 )
 	  {
 		  HAL_ADC_Stop_DMA(&hadc3);
 	  }
@@ -1078,9 +1078,9 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			  needToStartSampling = 0;
 			  ResetClock(htim2);
 
-			  ReceiveBeginSamplingCommand(&hadc1, transmitBuffers_ADC1, ADC1_BUFFER_LENGTH, &hasFinishedSampling_ADC1, CurrentCycle(ADC_1));
+			  ReceiveBeginSamplingCommand(&hadc1, transmitBuffers_ADC1, ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
 			  firstCycleStartTicks_ADC1 = ReadCurrentTicks(htim2);
-			  ReceiveBeginSamplingCommand(&hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, &hasFinishedSampling_ADC3, CurrentCycle(ADC_3));
+			  ReceiveBeginSamplingCommand(&hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_3));
 			  firstCycleStartTicks_ADC3 = ReadCurrentTicks(htim2);
 			  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
 			  hasStartedSampling = 1;
@@ -1114,10 +1114,13 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 {
 	if(hasStartedSampling == 1 && hasFinishedSampling() == 0)
 	{
+		enum ADCNumber adcNumber = GetADCEnumVal(hadc);
+
+
 		uint32_t* cycleEndTimes;
 		uint16_t** transmitBuffers;
 		int* currentCycle;
-		int* finishedSamplingFlag;
+		//int* finishedSamplingFlag;
 
 		//if(hadc == &hadc1)
 		if(hadc == (ADC_HandleTypeDef*)&hadc1)
@@ -1126,14 +1129,14 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 			transmitBuffers = transmitBuffers_ADC1;
 			//currentCycle = &currentCycle_ADC1;
 			currentCycle = CurrentCycle(ADC_1);
-			finishedSamplingFlag = &hasFinishedSampling_ADC1;
+			//finishedSamplingFlag = &hasFinishedSampling_ADC1;
 		}
 		else //Assume is ADC3 for compilation reasons.
 		{
 			cycleEndTimes = cycleEndTimes_ADC3;
 			transmitBuffers = transmitBuffers_ADC3;
 			currentCycle = CurrentCycle(ADC_3);
-			finishedSamplingFlag = &hasFinishedSampling_ADC3;
+			//finishedSamplingFlag = &hasFinishedSampling_ADC3;
 		}
 
 		//Log end time in ticks.
@@ -1149,7 +1152,8 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 		}
 		else if (*currentCycle == params.CycleCount)
 		{
-			*finishedSamplingFlag = 1;
+			//*finishedSamplingFlag = 1;
+			*HasFinishedSampling(adcNumber) = 1;
 
 			//If this one finishing means that both are finished, flash LED.
 			if(hasFinishedSampling() == 1)

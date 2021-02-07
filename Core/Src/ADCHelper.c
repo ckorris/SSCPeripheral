@@ -13,6 +13,9 @@ int currentCycleADC1 = 0;
 int currentCycleADC2 = 0;
 int currentCycleADC3 = 0;
 
+int hasFinishedSampling_ADC1 = 0;
+int hasFinishedSampling_ADC2 = 0;
+int hasFinishedSampling_ADC3 = 0;
 
 void InitADCHelper(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2, ADC_HandleTypeDef* adc3)
 {
@@ -53,6 +56,21 @@ int* CurrentCycle(enum ADCNumber adcNum)
 		return &currentCycleADC2;
 	case ADC_3:
 		return &currentCycleADC3;
+	default:
+		return 0;
+	}
+}
+
+int* HasFinishedSampling(enum ADCNumber adcNum)
+{
+	switch(adcNum)
+	{
+	case ADC_1:
+		return &hasFinishedSampling_ADC1;
+	case ADC_2:
+		return &hasFinishedSampling_ADC2;
+	case ADC_3:
+		return &hasFinishedSampling_ADC3;
 	default:
 		return 0;
 	}
