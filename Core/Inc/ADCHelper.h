@@ -1,4 +1,4 @@
-/*
+
 
 #include "stm32f7xx_hal.h"
 
@@ -10,4 +10,4 @@ enum ADCNumber GetADCEnumVal(ADC_HandleTypeDef* hadc);
 
 int* CurrentCycle(enum ADCNumber adcNum);
 
-*/
+

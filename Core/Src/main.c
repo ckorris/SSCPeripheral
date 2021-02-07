@@ -29,6 +29,7 @@
 #include "I2CNetworkCommon.h"
 #include "PeripheralReceiveCommands.h"
 #include "TimeHelpers.h"
+#include "ADCHelper.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,7 +41,7 @@
 /* USER CODE BEGIN PD */
 #define COMMAND_BUF_SIZE 1
 
-#define DEVICE_COUNT_ADC1 16
+#define DEVICE_COUNT_ADC1 8
 #define DEVICE_COUNT_ADC3 8
 
 #define TOTAL_DEVICE_COUNT (DEVICE_COUNT_ADC1 + DEVICE_COUNT_ADC3)
@@ -119,8 +120,8 @@ uint32_t* cycleEndTimes_ADC1;
 uint32_t* cycleEndTimes_ADC3;
 //int currentCycle = 0;
 
-int currentCycle_ADC1 = 0;
-int currentCycle_ADC3 = 0;
+//int currentCycle_ADC1 = 0;
+//int currentCycle_ADC3 = 0;
 
 /* USER CODE END PV */
 
@@ -185,6 +186,10 @@ int main(void)
   MX_ADC3_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
+
+  //Init the helper.
+  InitADCHelper(&hadc1, &hadc2, &hadc3);
+
 
   //Make sure blue is reset, so we know we're not a host.
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
@@ -573,6 +578,7 @@ static void MX_ADC2_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_9;
   sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
@@ -580,6 +586,7 @@ static void MX_ADC2_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_10;
   sConfig.Rank = ADC_REGULAR_RANK_3;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
@@ -587,6 +594,7 @@ static void MX_ADC2_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_11;
   sConfig.Rank = ADC_REGULAR_RANK_4;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
@@ -594,6 +602,7 @@ static void MX_ADC2_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank = ADC_REGULAR_RANK_5;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
@@ -601,6 +610,7 @@ static void MX_ADC2_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_13;
   sConfig.Rank = ADC_REGULAR_RANK_6;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
@@ -608,6 +618,7 @@ static void MX_ADC2_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_14;
   sConfig.Rank = ADC_REGULAR_RANK_7;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
@@ -615,6 +626,7 @@ static void MX_ADC2_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_15;
   sConfig.Rank = ADC_REGULAR_RANK_8;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
@@ -1066,9 +1078,9 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			  needToStartSampling = 0;
 			  ResetClock(htim2);
 
-			  ReceiveBeginSamplingCommand(&hadc1, transmitBuffers_ADC1, ADC1_BUFFER_LENGTH, &hasFinishedSampling_ADC1, &currentCycle_ADC1);
+			  ReceiveBeginSamplingCommand(&hadc1, transmitBuffers_ADC1, ADC1_BUFFER_LENGTH, &hasFinishedSampling_ADC1, CurrentCycle(ADC_1));
 			  firstCycleStartTicks_ADC1 = ReadCurrentTicks(htim2);
-			  ReceiveBeginSamplingCommand(&hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, &hasFinishedSampling_ADC3, &currentCycle_ADC3);
+			  ReceiveBeginSamplingCommand(&hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, &hasFinishedSampling_ADC3, CurrentCycle(ADC_3));
 			  firstCycleStartTicks_ADC3 = ReadCurrentTicks(htim2);
 			  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
 			  hasStartedSampling = 1;
@@ -1112,14 +1124,15 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 		{
 			cycleEndTimes = cycleEndTimes_ADC1;
 			transmitBuffers = transmitBuffers_ADC1;
-			currentCycle = &currentCycle_ADC1;
+			//currentCycle = &currentCycle_ADC1;
+			currentCycle = CurrentCycle(ADC_1);
 			finishedSamplingFlag = &hasFinishedSampling_ADC1;
 		}
 		else //Assume is ADC3 for compilation reasons.
 		{
 			cycleEndTimes = cycleEndTimes_ADC3;
 			transmitBuffers = transmitBuffers_ADC3;
-			currentCycle = &currentCycle_ADC3;
+			currentCycle = CurrentCycle(ADC_3);
 			finishedSamplingFlag = &hasFinishedSampling_ADC3;
 		}
 

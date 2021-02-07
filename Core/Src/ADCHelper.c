@@ -1,39 +1,39 @@
-/*
+
 
 #include "ADCHelper.h"
 #include "stm32f7xx_hal.h"
 
 int isInit = 0;
 
-ADC_HandleTypeDef* hadc1;
-ADC_HandleTypeDef* hadc2;
-ADC_HandleTypeDef* hadc3;
+ADC_HandleTypeDef* _hadc1;
+ADC_HandleTypeDef* _hadc2;
+ADC_HandleTypeDef* _hadc3;
 
-int currentCycle_ADC1 = 0;
-int currentCycle_ADC2 = 0;
-int currentCycle_ADC3 = 0;
+int currentCycleADC1 = 0;
+int currentCycleADC2 = 0;
+int currentCycleADC3 = 0;
 
 
 void InitADCHelper(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2, ADC_HandleTypeDef* adc3)
 {
-	hadc1 = adc1;
-	hadc2 = adc2;
-	hadc3 = adc3;
+	_hadc1 = adc1;
+	_hadc2 = adc2;
+	_hadc3 = adc3;
 
 	isInit = 1;
 }
 
 enum ADCNumber GetADCEnumVal(ADC_HandleTypeDef* hadc)
 {
-	if(hadc == hadc1)
+	if(hadc == _hadc1)
 	{
 		return ADC_1;
 	}
-	else if (hadc == hadc2)
+	else if (hadc == _hadc2)
 	{
 		return ADC_2;
 	}
-	else if (hadc == hadc3)
+	else if (hadc == _hadc3)
 	{
 		return ADC_3;
 	}
@@ -48,13 +48,13 @@ int* CurrentCycle(enum ADCNumber adcNum)
 	switch(adcNum)
 	{
 	case ADC_1:
-		return &currentCycle_ADC1;
+		return &currentCycleADC1;
 	case ADC_2:
-		return &currentCycle_ADC2;
+		return &currentCycleADC2;
 	case ADC_3:
-		return &currentCycle_ADC3;
+		return &currentCycleADC3;
 	default:
 		return 0;
 	}
 }
-*/
+
