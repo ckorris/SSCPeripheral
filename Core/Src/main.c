@@ -187,6 +187,9 @@ int main(void)
   hadc1.DMA_Handle->Instance->CR |= DMA_SxCR_DBM_Msk;
   hadc1.DMA_Handle->XferM1CpltCallback = ADC_DMAConvCplt_M1;
 
+  hadc2.DMA_Handle->Instance->CR |= DMA_SxCR_DBM_Msk;
+  hadc2.DMA_Handle->XferM1CpltCallback = ADC_DMAConvCplt_M1;
+
   hadc3.DMA_Handle->Instance->CR |= DMA_SxCR_DBM_Msk;
   hadc3.DMA_Handle->XferM1CpltCallback = ADC_DMAConvCplt_M1;
 
@@ -1016,15 +1019,24 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			  ResetClock(htim2);
 
 			  //ADC 1.
-			  ReceiveBeginSamplingCommand(&hadc1, (*TransmitBuffer(ADC_1)), ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
-			  *FirstCycleStartTicks(ADC_1) = ReadCurrentTicks(htim2);
+			  if(BufferSize(ADC_1) != 0)
+			  {
+				  ReceiveBeginSamplingCommand(&hadc1, (*TransmitBuffer(ADC_1)), ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
+				  *FirstCycleStartTicks(ADC_1) = ReadCurrentTicks(htim2);
+			  }
 			  //ADC 2.
-			  ReceiveBeginSamplingCommand(&hadc2, (*TransmitBuffer(ADC_2)), ADC2_BUFFER_LENGTH, HasFinishedSampling(ADC_2), CurrentCycle(ADC_2));
-			  *FirstCycleStartTicks(ADC_2) = ReadCurrentTicks(htim2);
+			  if(BufferSize(ADC_2) != 0)
+			  {
+				  ReceiveBeginSamplingCommand(&hadc2, (*TransmitBuffer(ADC_2)), ADC2_BUFFER_LENGTH, HasFinishedSampling(ADC_2), CurrentCycle(ADC_2));
+				  *FirstCycleStartTicks(ADC_2) = ReadCurrentTicks(htim2);
+			  }
 			  //ADC 3.
-			  ReceiveBeginSamplingCommand(&hadc3, (*TransmitBuffer(ADC_3)), ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_3), CurrentCycle(ADC_3));
-			  *FirstCycleStartTicks(ADC_3) = ReadCurrentTicks(htim2);
-			  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
+			  if(BufferSize(ADC_3) != 0)
+			  {
+				  ReceiveBeginSamplingCommand(&hadc3, (*TransmitBuffer(ADC_3)), ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_3), CurrentCycle(ADC_3));
+				  *FirstCycleStartTicks(ADC_3) = ReadCurrentTicks(htim2);
+			  }
+
 			  hasStartedSampling = 1;
 			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 
@@ -1052,9 +1064,11 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 
 void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 {
+	enum ADCNumber adcNumber = GetADCEnumVal(hadc);
+
 	if(hasStartedSampling == 1 && AreAllADCsFinishedSampling() == 0)
 	{
-		enum ADCNumber adcNumber = GetADCEnumVal(hadc);
+
 
 		if(*HasFinishedSampling(adcNumber) == 1)
 		{
