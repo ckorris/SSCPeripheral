@@ -1064,27 +1064,27 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			transmitBuffers_ADC3[i] = calloc(ADC3_BUFFER_LENGTH, sizeof(uint16_t));
 		}
 
-		uint32_t** endTimesadc1 = CycleEndTimes(ADC_1);
+		//uint32_t** endTimesadc1 = CycleEndTimes(ADC_1);
 		//*endTimesadc1 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 		*CycleEndTimes(ADC_1) = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
-		uint32_t** endTimesadc3 = CycleEndTimes(ADC_3);
-		*endTimesadc3 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
+		//uint32_t** endTimesadc3 = CycleEndTimes(ADC_3);
+		//*endTimesadc3 = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
+		*CycleEndTimes(ADC_3) = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 
-		*CycleEndTimes(ADC_1)[0] = 41;
-		//*endTimesadc1[0] = 41;
-		*endTimesadc3[0] = 42;
-		*endTimesadc1[1] = 51;
-		*endTimesadc3[1] = 52;
 
-		//TEST
-		//This is leaking weird. Fix.
+		CycleEndTimes(ADC_1)[0][0] = 112;
+		CycleEndTimes(ADC_1)[0][1] = 113;
+		CycleEndTimes(ADC_3)[0][0] = 122;
+		CycleEndTimes(ADC_3)[0][1] = 123;
+
 
 		uint32_t** endTimesAgainadc1 = CycleEndTimes(ADC_1);
+		uint32_t** endTimesAgainadc3 = CycleEndTimes(ADC_3);
 
-		uint32_t adc1_0 = *CycleEndTimes(ADC_1)[0];
-		uint32_t adc1_1 = *CycleEndTimes(ADC_1)[1];
-		uint32_t adc3_0 = *endTimesadc3[0]; //This is the same as above it.
-		uint32_t adc3_1 = *endTimesadc3[1]; //This is empty.
+		uint32_t adc1_0 = CycleEndTimes(ADC_1)[0][0];
+		uint32_t adc1_1 = CycleEndTimes(ADC_1)[0][1];
+		uint32_t adc3_0 = CycleEndTimes(ADC_3)[0][0];
+		uint32_t adc3_1 = CycleEndTimes(ADC_3)[0][1];
 
 		int totalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
 		processedHeaders = calloc(totalPacketCount, sizeof(samplePacketHeader*));
