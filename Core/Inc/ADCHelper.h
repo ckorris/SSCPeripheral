@@ -41,3 +41,5 @@ uint32_t* FirstCycleStartTicks(enum ADCNumber adcNum);
 uint32_t** CycleEndTimes(enum ADCNumber adcNum);
 
 uint16_t*** TransmitBuffer(enum ADCNumber adcNum); //IMMA THREE STAR GENERAL BOIIII
+
+void AllocateAllBuffersAndEndTimes(int cycleCount);

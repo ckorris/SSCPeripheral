@@ -226,25 +226,6 @@ int main(void)
 	  if((AreAllADCsFinishedSampling() == 1 && hasProcessedFinishedSamples == 0))
 	  //if(hasFinishedSampling_ADC1 == 1 && hasFinishedSampling_ADC3 == 1 && hasProcessedFinishedSamples == 0)
 	  {
-		  //TODO: Move to own method.
-
-		  //TODO: Free and allocate the arrays when we get the sample params. We need both old and new params to do this.
-		  //int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
-
-		  /*
-		  //DEBUG start times.
-		  uint32_t endTimes1[params.CycleCount];
-		  for(int i = 0; i < params.CycleCount; i++)
-		  {
-			  endTimes1[i] = (*CycleEndTimes(ADC_1))[i];
-		  }
-		  uint32_t endTimes3[params.CycleCount];
-		  for(int i = 0; i < params.CycleCount; i++)
-		  {
-			  endTimes3[i] = (*CycleEndTimes(ADC_3))[i];
-		  }
-		   */
-
 		  for(int cycle = 0; cycle < params.CycleCount; cycle ++)
 		  {
 			  for(int device = 0; device < TOTAL_DEVICE_COUNT; device++)
@@ -292,8 +273,8 @@ int main(void)
 			  }
 		  }
 
+		  /*
 		  //Debug
-
 		  int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
 		  samplePacketHeader debugHeaders[totalSamples];
 		  uint16_t debugSamples[totalSamples][BUFFER_SIZE_PER_DEVICE];
@@ -306,6 +287,7 @@ int main(void)
 				  debugSamples[i][j] = processedSamples[i][j];
 			  }
  		  }
+ 		  */
 
 
 		  hasProcessedFinishedSamples = 1;
@@ -997,19 +979,6 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		//TODO: Move all buffer clearing and re-allocaiton into receive command.
 		if(paramsSet == 1)
 		{
-			for(int i = 0; i < params.CycleCount; i++)
-			{
-				//free(transmitBuffers_ADC1[i]);
-				//free(transmitBuffers_ADC3[i]);
-				free((*TransmitBuffer(ADC_1))[i]);
-				free((*TransmitBuffer(ADC_3))[i]);
-			}
-			free(*TransmitBuffer(ADC_1));
-			free(*TransmitBuffer(ADC_3));
-
-			free(*CycleEndTimes(ADC_1));
-			free(*CycleEndTimes(ADC_3));
-
 			int oldTotalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
 			for(int i = 0; i < oldTotalPacketCount; i++)
 			{
@@ -1017,27 +986,11 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 				free(processedSamples[i]);
 			}
 		}
+
 		ReceiveSampleParamsCommand(hi2c, &params, &paramsSet);
 
-		//Try allocating buffer here
-		//Doing it slower now to be safe. TODO: Make faster with malloc.
-		//transmitBuffers_ADC1 = calloc(params.CycleCount, sizeof(uint16_t*));
-		*TransmitBuffer(ADC_1) = calloc(params.CycleCount, sizeof(uint16_t*));
-		for(int i = 0; i < params.CycleCount; i++)
-		{
-			//transmitBuffers_ADC1[i] = calloc(ADC1_BUFFER_LENGTH, sizeof(uint16_t));
-			(*TransmitBuffer(ADC_1))[i] = calloc(ADC1_BUFFER_LENGTH, sizeof(uint16_t));
-		}
+		AllocateAllBuffersAndEndTimes(params.CycleCount);
 
-		*TransmitBuffer(ADC_3) = calloc(params.CycleCount, sizeof(uint16_t*));
-		for(int i = 0; i < params.CycleCount; i++)
-		{
-			//transmitBuffers_ADC3[i] = calloc(ADC3_BUFFER_LENGTH, sizeof(uint16_t));
-			(*TransmitBuffer(ADC_3))[i] = calloc(ADC1_BUFFER_LENGTH, sizeof(uint16_t));
-		}
-
-		*CycleEndTimes(ADC_1) = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
-		*CycleEndTimes(ADC_3) = calloc(params.CycleCount, sizeof(uint32_t)); //Also needs to be malloc.
 
 		int totalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
 		processedHeaders = calloc(totalPacketCount, sizeof(samplePacketHeader*));

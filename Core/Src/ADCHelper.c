@@ -3,6 +3,8 @@
 #include "ADCHelper.h"
 #include "stm32f7xx_hal.h"
 
+#include <stdlib.h>
+
 int isInit = 0;
 
 ADC_HandleTypeDef* _hadc1;
@@ -28,6 +30,16 @@ uint32_t* cycleEndTimes_ADC3;
 uint16_t** transmitBuffers_ADC1; //Filled with data from adc1_buf as it completes, and remains until cleared.
 uint16_t** transmitBuffers_ADC2;
 uint16_t** transmitBuffers_ADC3;
+
+
+
+//Not accessible.
+int hasAllocatedBuffersAndEndTimes = 0;
+int previousCycleCount = 0;
+
+//Forward declaration.
+void AllocateBuffersAndEndTimes(enum ADCNumber adcNum, int cycleCount);
+void DeallocateBuffersAndEndTimes(enum ADCNumber adcNum, int cycleCount);
 
 void InitADCHelper(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2, ADC_HandleTypeDef* adc3)
 {
@@ -180,4 +192,51 @@ uint16_t*** TransmitBuffer(enum ADCNumber adcNum)
 		return 0;
 	}
 }
+
+
+void AllocateAllBuffersAndEndTimes(int cycleCount)
+{
+	if(hasAllocatedBuffersAndEndTimes == 1)
+	{
+		DeallocateBuffersAndEndTimes(ADC_1, previousCycleCount);
+		DeallocateBuffersAndEndTimes(ADC_2, previousCycleCount);
+		DeallocateBuffersAndEndTimes(ADC_3, previousCycleCount);
+	}
+
+	AllocateBuffersAndEndTimes(ADC_1, cycleCount);
+	AllocateBuffersAndEndTimes(ADC_2, cycleCount);
+	AllocateBuffersAndEndTimes(ADC_3, cycleCount);
+
+	hasAllocatedBuffersAndEndTimes = 1;
+	previousCycleCount = cycleCount;
+}
+
+//Privates.
+
+void AllocateBuffersAndEndTimes(enum ADCNumber adcNum, int cycleCount)
+{
+	*TransmitBuffer(adcNum) = calloc(cycleCount, sizeof(uint16_t*));
+	for(int i = 0; i < cycleCount; i++)
+	{
+		(*TransmitBuffer(adcNum))[i] = calloc(BufferSize(adcNum), sizeof(uint16_t));
+	}
+	*CycleEndTimes(adcNum) = calloc(cycleCount, sizeof(uint32_t));
+}
+
+void DeallocateBuffersAndEndTimes(enum ADCNumber adcNum, int cycleCount)
+{
+	for(int i = 0; i < cycleCount; i++)
+	{
+		free((*TransmitBuffer(adcNum))[i]);
+	}
+
+	free(*TransmitBuffer(adcNum));
+	free(*CycleEndTimes(adcNum));
+}
+
+
+
+
+
+
 
