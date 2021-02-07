@@ -217,6 +217,10 @@ int main(void)
 	  {
 		  HAL_ADC_Stop_DMA(&hadc1);
 	  }
+	  if(*HasFinishedSampling(ADC_2) == 1 && hasProcessedFinishedSamples == 0 )
+	  {
+		  HAL_ADC_Stop_DMA(&hadc2);
+	  }
 	  if(*HasFinishedSampling(ADC_3) == 1 && hasProcessedFinishedSamples == 0 )
 	  {
 		  HAL_ADC_Stop_DMA(&hadc3);
@@ -273,7 +277,7 @@ int main(void)
 			  }
 		  }
 
-		  /*
+
 		  //Debug
 		  int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
 		  samplePacketHeader debugHeaders[totalSamples];
@@ -287,7 +291,7 @@ int main(void)
 				  debugSamples[i][j] = processedSamples[i][j];
 			  }
  		  }
- 		  */
+
 
 
 		  hasProcessedFinishedSamples = 1;
@@ -1011,8 +1015,13 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			  needToStartSampling = 0;
 			  ResetClock(htim2);
 
+			  //ADC 1.
 			  ReceiveBeginSamplingCommand(&hadc1, (*TransmitBuffer(ADC_1)), ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
 			  *FirstCycleStartTicks(ADC_1) = ReadCurrentTicks(htim2);
+			  //ADC 2.
+			  ReceiveBeginSamplingCommand(&hadc2, (*TransmitBuffer(ADC_2)), ADC2_BUFFER_LENGTH, HasFinishedSampling(ADC_2), CurrentCycle(ADC_2));
+			  *FirstCycleStartTicks(ADC_2) = ReadCurrentTicks(htim2);
+			  //ADC 3.
 			  ReceiveBeginSamplingCommand(&hadc3, (*TransmitBuffer(ADC_3)), ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_3), CurrentCycle(ADC_3));
 			  *FirstCycleStartTicks(ADC_3) = ReadCurrentTicks(htim2);
 			  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
