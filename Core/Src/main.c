@@ -114,8 +114,8 @@ uint16_t** processedSamples;
 //Timing
 //uint32_t startTicks; //Clock at the moment that we received the command to start sampling.
 //uint32_t cycleEndTimes[CYCLE_COUNT];
-uint32_t firstCycleStartTicks_ADC1; //Clock at the moment we started the ADCs. May be different than startTicks if a delay was requested, plus setup time.
-uint32_t firstCycleStartTicks_ADC3;
+//uint32_t firstCycleStartTicks_ADC1; //Clock at the moment we started the ADCs. May be different than startTicks if a delay was requested, plus setup time.
+//uint32_t firstCycleStartTicks_ADC3;
 uint32_t* cycleEndTimes_ADC1;
 uint32_t* cycleEndTimes_ADC3;
 //int currentCycle = 0;
@@ -258,7 +258,7 @@ int main(void)
 			  {
 				  int sampleID = cycle * TOTAL_DEVICE_COUNT + device;
 
-				  uint32_t startTimeTicks = cycle == 0 ? firstCycleStartTicks_ADC1 : cycleEndTimes_ADC1[cycle - 1];
+				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_1) : cycleEndTimes_ADC1[cycle - 1];
 				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
 				  uint32_t endTimeUs = TicksToSubSecond(htim2, cycleEndTimes_ADC1[cycle], MICROSECOND_DIVIDER);
 
@@ -293,7 +293,7 @@ int main(void)
 				  int deviceID = DEVICE_COUNT_ADC1 + device;
 				  int sampleID = cycle * TOTAL_DEVICE_COUNT + deviceID;
 
-				  uint32_t startTimeTicks = cycle == 0 ? firstCycleStartTicks_ADC3 : cycleEndTimes_ADC3[cycle - 1];
+				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(ADC_3) : cycleEndTimes_ADC3[cycle - 1];
 				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
 				  uint32_t endTimeUs = TicksToSubSecond(htim2, cycleEndTimes_ADC3[cycle], MICROSECOND_DIVIDER);
 
@@ -1079,9 +1079,9 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			  ResetClock(htim2);
 
 			  ReceiveBeginSamplingCommand(&hadc1, transmitBuffers_ADC1, ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
-			  firstCycleStartTicks_ADC1 = ReadCurrentTicks(htim2);
+			  *FirstCycleStartTicks(ADC_1) = ReadCurrentTicks(htim2);
 			  ReceiveBeginSamplingCommand(&hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_3));
-			  firstCycleStartTicks_ADC3 = ReadCurrentTicks(htim2);
+			  *FirstCycleStartTicks(ADC_3) = ReadCurrentTicks(htim2);
 			  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_BUFFER_LENGTH);
 			  hasStartedSampling = 1;
 			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);

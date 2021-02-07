@@ -17,6 +17,10 @@ int hasFinishedSampling_ADC1 = 0;
 int hasFinishedSampling_ADC2 = 0;
 int hasFinishedSampling_ADC3 = 0;
 
+uint32_t firstCycleStartTicks_ADC1; //Clock at the moment we started the ADCs. May be different than startTicks if a delay was requested, plus setup time.
+uint32_t firstCycleStartTicks_ADC2;
+uint32_t firstCycleStartTicks_ADC3;
+
 void InitADCHelper(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2, ADC_HandleTypeDef* adc3)
 {
 	_hadc1 = adc1;
@@ -71,6 +75,21 @@ int* HasFinishedSampling(enum ADCNumber adcNum)
 		return &hasFinishedSampling_ADC2;
 	case ADC_3:
 		return &hasFinishedSampling_ADC3;
+	default:
+		return 0;
+	}
+}
+
+uint32_t* FirstCycleStartTicks(enum ADCNumber adcNum)
+{
+	switch(adcNum)
+	{
+	case ADC_1:
+		return &firstCycleStartTicks_ADC1;
+	case ADC_2:
+		return &firstCycleStartTicks_ADC1;
+	case ADC_3:
+		return &firstCycleStartTicks_ADC1;
 	default:
 		return 0;
 	}
