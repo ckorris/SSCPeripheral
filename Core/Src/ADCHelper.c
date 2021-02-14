@@ -5,6 +5,9 @@
 
 #include <stdlib.h>
 
+#include "PeripheralReceiveCommands.h"
+#include "TimeHelpers.h"
+
 int isInit = 0;
 
 ADC_HandleTypeDef* _hadc1;
@@ -234,6 +237,35 @@ void DeallocateBuffersAndEndTimes(enum ADCNumber adcNum, int cycleCount)
 	free(*CycleEndTimes(adcNum));
 }
 
+void StartSampling(TIM_HandleTypeDef htim)
+{
+
+	//TEST
+	//ResetClock(htim);
+
+	//ADC 1.
+	if(BufferSize(ADC_1) != 0)
+	{
+	  ReceiveBeginSamplingCommand(_hadc1, transmitBuffers_ADC1, ADC1_BUFFER_LENGTH, &hasFinishedSampling_ADC1, &currentCycleADC1);
+	  firstCycleStartTicks_ADC1 = ReadCurrentTicks(htim);
+	}
+	//ADC 2.
+	if(BufferSize(ADC_2) != 0)
+	{
+	  ReceiveBeginSamplingCommand(_hadc2, transmitBuffers_ADC2, ADC2_BUFFER_LENGTH, &hasFinishedSampling_ADC2, &currentCycleADC2);
+	  firstCycleStartTicks_ADC2 = ReadCurrentTicks(htim);
+	}
+	//ADC 3.
+	if(BufferSize(ADC_3) != 0)
+	{
+	  ReceiveBeginSamplingCommand(_hadc3, transmitBuffers_ADC3, ADC3_BUFFER_LENGTH, &hasFinishedSampling_ADC3, &currentCycleADC3);
+	  firstCycleStartTicks_ADC3 = ReadCurrentTicks(htim);
+	}
+
+	uint32_t firstMS = TicksToSubSecond(htim, firstCycleStartTicks_ADC1, MILLISECOND_DIVIDER);
+	uint32_t secondMS = TicksToSubSecond(htim, firstCycleStartTicks_ADC2, MILLISECOND_DIVIDER);
+	uint32_t thirdMS = TicksToSubSecond(htim, firstCycleStartTicks_ADC3, MILLISECOND_DIVIDER);
+}
 
 
 

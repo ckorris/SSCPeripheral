@@ -214,6 +214,25 @@ int main(void)
 		  needToListenAgain = 0;
 	  }
 
+	  //See if we've been told to start sampling.
+	  if(needToStartSampling == 1)
+	  {
+		  //Check to see if the delay time has passed the requested delay.
+		  uint32_t ticksSinceStartSamplingCommand = ReadCurrentTicks(htim2);
+		  uint32_t msSinceStartSamplingCommand = TicksToSubSecond(htim2, ticksSinceStartSamplingCommand, MILLISECOND_DIVIDER);
+
+		  if(msSinceStartSamplingCommand > params.DelayMS)
+		  {
+              needToStartSampling = 0;
+              hasStartedSampling = 1;
+              hasProcessedFinishedSamples = 0;
+
+              StartSampling(htim2);
+
+              HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+		  }
+	  }
+
 
 	  //Stop the DMA cycles if needed.
 	  if(*HasFinishedSampling(ADC_1) == 1 && hasProcessedFinishedSamples == 0 )
@@ -983,7 +1002,6 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	{
 	case SendSampleParams:
 
-		//TODO: Move all buffer clearing and re-allocaiton into receive command.
 		if(paramsSet == 1)
 		{
 			int oldTotalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
@@ -1015,32 +1033,8 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	case BeginSampling:
 		if(hasStartedSampling == 0)
 		{
-			  needToStartSampling = 0;
-			  ResetClock(htim2);
-
-			  //ADC 1.
-			  if(BufferSize(ADC_1) != 0)
-			  {
-				  ReceiveBeginSamplingCommand(&hadc1, (*TransmitBuffer(ADC_1)), ADC1_BUFFER_LENGTH, HasFinishedSampling(ADC_1), CurrentCycle(ADC_1));
-				  *FirstCycleStartTicks(ADC_1) = ReadCurrentTicks(htim2);
-			  }
-			  //ADC 2.
-			  if(BufferSize(ADC_2) != 0)
-			  {
-				  ReceiveBeginSamplingCommand(&hadc2, (*TransmitBuffer(ADC_2)), ADC2_BUFFER_LENGTH, HasFinishedSampling(ADC_2), CurrentCycle(ADC_2));
-				  *FirstCycleStartTicks(ADC_2) = ReadCurrentTicks(htim2);
-			  }
-			  //ADC 3.
-			  if(BufferSize(ADC_3) != 0)
-			  {
-				  ReceiveBeginSamplingCommand(&hadc3, (*TransmitBuffer(ADC_3)), ADC3_BUFFER_LENGTH, HasFinishedSampling(ADC_3), CurrentCycle(ADC_3));
-				  *FirstCycleStartTicks(ADC_3) = ReadCurrentTicks(htim2);
-			  }
-
-			  hasStartedSampling = 1;
-			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-
-			  hasProcessedFinishedSamples = 0;
+			ResetClock(htim2);
+			needToStartSampling = 1; //TODO: May need to reset other things here.
 		}
 		break;
 	case CheckFinished:
