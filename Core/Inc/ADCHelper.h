@@ -6,7 +6,7 @@
 #define DEVICE_COUNT_ADC2 8
 #define DEVICE_COUNT_ADC3 8
 
-#define BUFFER_SIZE_PER_DEVICE 256 //The buffer size is this times the total number of devices.
+#define BUFFER_SIZE_PER_DEVICE 1024 //The buffer size is this times the total number of devices.
 
 
 

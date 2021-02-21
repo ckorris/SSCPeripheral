@@ -78,7 +78,14 @@ void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, uint16_t** processedSamp
 {
 	//Wait to be told what sample ID that's being requested.
 	uint8_t idBuf[1];
-	HAL_I2C_Slave_Receive(hi2c, idBuf, 1, 5); //5 is arbitrary.
+	HAL_StatusTypeDef sampleNumberResult = HAL_I2C_Slave_Receive(hi2c, idBuf, 1, 5); //5 is arbitrary.
+	if(sampleNumberResult != HAL_OK)
+	{
+		//Error
+		int x = 0;
+		return;
+	}
+
 	int sampleID = (int)idBuf[0];
 
 	uint16_t* samples = processedSamples[sampleID];
@@ -86,8 +93,7 @@ void ReceiveRequestDataCommand(I2C_HandleTypeDef *hi2c, uint16_t** processedSamp
 	//SendSampleDataCommand(hi2c, &deviceSamples, samplesPerDevice);
 	SendSampleDataCommand(hi2c, samples, sizeof(uint16_t) * samplesPerDevice);
 
-	int x = 0;
-	x++;
+
 }
 
 

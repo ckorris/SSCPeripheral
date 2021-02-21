@@ -23,5 +23,11 @@ void SendSampleHeaderCommand(I2C_HandleTypeDef *hi2c, samplePacketHeader *packet
 
 void SendSampleDataCommand(I2C_HandleTypeDef *hi2c, uint16_t* data, uint16_t bufferSize)
 {
-	HAL_I2C_Slave_Transmit(hi2c, (uint8_t*)data, bufferSize, 50);
+	HAL_StatusTypeDef sampleResult = HAL_I2C_Slave_Transmit(hi2c, (uint8_t*)data, bufferSize, 50);
+	if(sampleResult != HAL_OK)
+	{
+		//Error
+		int x = 0;
+		return;
+	}
 }

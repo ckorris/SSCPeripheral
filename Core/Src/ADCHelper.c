@@ -224,6 +224,17 @@ void AllocateBuffersAndEndTimes(enum ADCNumber adcNum, int cycleCount)
 		(*TransmitBuffer(adcNum))[i] = calloc(BufferSize(adcNum), sizeof(uint16_t));
 	}
 	*CycleEndTimes(adcNum) = calloc(cycleCount, sizeof(uint32_t));
+
+	//DEBUG
+	uint16_t bufferDebug[cycleCount];
+	for(int i = 0; i < cycleCount; i++)
+	{
+		bufferDebug[i] = (*TransmitBuffer(adcNum))[i];
+ 	}
+
+	int x = 0;
+	x++;
+
 }
 
 void DeallocateBuffersAndEndTimes(enum ADCNumber adcNum, int cycleCount)

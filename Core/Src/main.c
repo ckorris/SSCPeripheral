@@ -235,92 +235,108 @@ int main(void)
 
 
 	  //Stop the DMA cycles if needed.
-	  if(*HasFinishedSampling(ADC_1) == 1 && hasProcessedFinishedSamples == 0 )
+	  if(hasProcessedFinishedSamples == 0)
 	  {
-		  HAL_ADC_Stop_DMA(&hadc1);
-	  }
-	  if(*HasFinishedSampling(ADC_2) == 1 && hasProcessedFinishedSamples == 0 )
-	  {
-		  HAL_ADC_Stop_DMA(&hadc2);
-	  }
-	  if(*HasFinishedSampling(ADC_3) == 1 && hasProcessedFinishedSamples == 0 )
-	  {
-		  HAL_ADC_Stop_DMA(&hadc3);
-	  }
-
-	  //If both are done, process the samples.
-	  if((AreAllADCsFinishedSampling() == 1 && hasProcessedFinishedSamples == 0))
-	  //if(hasFinishedSampling_ADC1 == 1 && hasFinishedSampling_ADC3 == 1 && hasProcessedFinishedSamples == 0)
-	  {
-		  for(int cycle = 0; cycle < params.CycleCount; cycle ++)
+		  if(*HasFinishedSampling(ADC_1) == 1)
 		  {
-			  for(int device = 0; device < TOTAL_DEVICE_COUNT; device++)
-			  {
-				  //Determine which device we're from and device within sample.
-				  //Temp, should ideally be abstracted into a method to make this easier.
-				  enum ADCNumber adcNumber;
-				  int deviceIDWithinADC;
-				  if(device < DeviceCount(ADC_1))
-				  {
-					  adcNumber = ADC_1;
-					  deviceIDWithinADC = device;
-				  }
-				  else if (device < DeviceCount(ADC_1) + DeviceCount(ADC_2))
-				  {
-					  adcNumber = ADC_2;
-					  deviceIDWithinADC = device - DeviceCount(ADC_1);
-				  }
-				  else
-				  {
-					  adcNumber = ADC_3;
-					  deviceIDWithinADC = device - DeviceCount(ADC_1) - DeviceCount(ADC_2);
-				  }
-
-				  int sampleID = cycle * TOTAL_DEVICE_COUNT + device;
-
-				  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(adcNumber) : (*CycleEndTimes(adcNumber))[cycle - 1];
-				  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
-				  uint32_t endTimeUs = TicksToSubSecond(htim2, (*CycleEndTimes(adcNumber))[cycle], MICROSECOND_DIVIDER);
-
-				  samplePacketHeader* header = processedHeaders[sampleID];
-				  header->DeviceID = device;
-				  header->SampleID = sampleID;
-				  header->startTimeUs = startTimeUs;
-				  header->endTimeUs = endTimeUs;
-				  header->AnalogInPinCount = TOTAL_DEVICE_COUNT;
-				  header->SampleCount = BUFFER_SIZE_PER_DEVICE;
-
-				  processedHeaders[sampleID] = header;
-
-				  for(int i = 0; i < BUFFER_SIZE_PER_DEVICE; i++)
-				  {
-					  processedSamples[sampleID][i] = (*TransmitBuffer(adcNumber))[cycle][i * DeviceCount(adcNumber) + deviceIDWithinADC];
-				  }
-			  }
+			  HAL_ADC_Stop_DMA(&hadc1);
+		  }
+		  if(*HasFinishedSampling(ADC_2) == 1 && hasProcessedFinishedSamples == 0 )
+		  {
+			  HAL_ADC_Stop_DMA(&hadc2);
+		  }
+		  if(*HasFinishedSampling(ADC_3) == 1 && hasProcessedFinishedSamples == 0 )
+		  {
+			  HAL_ADC_Stop_DMA(&hadc3);
 		  }
 
 
-		  //Debug
-		  int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
-		  samplePacketHeader debugHeaders[totalSamples];
-		  uint16_t debugSamples[totalSamples][BUFFER_SIZE_PER_DEVICE];
-		  for(int i = 0; i < totalSamples; i++)
+		  //If both are done, process the samples.
+		  if(AreAllADCsFinishedSampling() == 1)
+		  //if(hasFinishedSampling_ADC1 == 1 && hasFinishedSampling_ADC3 == 1 && hasProcessedFinishedSamples == 0)
 		  {
-			  samplePacketHeader header = *processedHeaders[i];
-			  debugHeaders[i] = header;
-			  for(int j = 0; j < BUFFER_SIZE_PER_DEVICE; j++)
+			  for(int cycle = 0; cycle < params.CycleCount; cycle ++)
 			  {
-				  debugSamples[i][j] = processedSamples[i][j];
+				  for(int device = 0; device < TOTAL_DEVICE_COUNT; device++)
+				  {
+					  //Determine which device we're from and device within sample.
+					  //Temp, should ideally be abstracted into a method to make this easier.
+					  enum ADCNumber adcNumber;
+					  int deviceIDWithinADC;
+					  if(device < DeviceCount(ADC_1))
+					  {
+						  adcNumber = ADC_1;
+						  deviceIDWithinADC = device;
+					  }
+					  else if (device < DeviceCount(ADC_1) + DeviceCount(ADC_2))
+					  {
+						  adcNumber = ADC_2;
+						  deviceIDWithinADC = device - DeviceCount(ADC_1);
+					  }
+					  else
+					  {
+						  adcNumber = ADC_3;
+						  deviceIDWithinADC = device - DeviceCount(ADC_1) - DeviceCount(ADC_2);
+					  }
+
+					  int sampleID = cycle * TOTAL_DEVICE_COUNT + device;
+
+					  //Allocate buffers for the processed header and samples.
+
+					  processedHeaders[sampleID] = malloc(sizeof(samplePacketHeader)); //Shouldn't need but we'll see.
+					  processedSamples[sampleID] = calloc(BUFFER_SIZE_PER_DEVICE, sizeof(uint16_t));
+
+
+					  uint32_t startTimeTicks = cycle == 0 ? *FirstCycleStartTicks(adcNumber) : (*CycleEndTimes(adcNumber))[cycle - 1];
+					  uint32_t startTimeUs = TicksToSubSecond(htim2, startTimeTicks, MICROSECOND_DIVIDER);
+					  uint32_t endTimeUs = TicksToSubSecond(htim2, (*CycleEndTimes(adcNumber))[cycle], MICROSECOND_DIVIDER);
+
+					  samplePacketHeader* header = processedHeaders[sampleID];
+					  header->DeviceID = device;
+					  header->SampleID = sampleID;
+					  header->startTimeUs = startTimeUs;
+					  header->endTimeUs = endTimeUs;
+					  header->AnalogInPinCount = TOTAL_DEVICE_COUNT;
+					  header->SampleCount = BUFFER_SIZE_PER_DEVICE;
+
+					  processedHeaders[sampleID] = header;
+
+					  for(int i = 0; i < BUFFER_SIZE_PER_DEVICE; i++)
+					  {
+						  //processedSamples[sampleID][i] = (*TransmitBuffer(adcNumber))[cycle][i * DeviceCount(adcNumber) + deviceIDWithinADC];
+						  uint16_t sample = (*TransmitBuffer(adcNumber))[cycle][i * DeviceCount(adcNumber) + deviceIDWithinADC];
+						  processedSamples[sampleID][i] = sample;
+					  }
+
+				  }
+
+				  free((*TransmitBuffer(ADC_1))[cycle]);
+				  free((*TransmitBuffer(ADC_2))[cycle]);
+				  free((*TransmitBuffer(ADC_3))[cycle]);
 			  }
- 		  }
+
+			  /*
+			  //Debug
+			  int totalSamples = TOTAL_DEVICE_COUNT * params.CycleCount;
+			  samplePacketHeader debugHeaders[totalSamples];
+			  uint16_t debugSamples[totalSamples][BUFFER_SIZE_PER_DEVICE];
+			  for(int i = 0; i < totalSamples; i++)
+			  {
+				  samplePacketHeader header = *processedHeaders[i];
+				  debugHeaders[i] = header;
+				  for(int j = 0; j < BUFFER_SIZE_PER_DEVICE; j++)
+				  {
+					  debugSamples[i][j] = processedSamples[i][j];
+				  }
+			  }
+			*/
 
 
+			  hasProcessedFinishedSamples = 1;
 
-		  hasProcessedFinishedSamples = 1;
-
-		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-	  }
-
+			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+		  }
+  	  }
 
 	  if(needToFlashRed == 1)
 	  	  {
@@ -1020,11 +1036,16 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 		int totalPacketCount = params.CycleCount * TOTAL_DEVICE_COUNT;
 		processedHeaders = calloc(totalPacketCount, sizeof(samplePacketHeader*));
 		processedSamples = calloc(totalPacketCount, sizeof(uint16_t*));
+
+
+		/*
 		for(int i = 0; i < totalPacketCount; i++)
 		{
 			processedHeaders[i] = malloc(sizeof(samplePacketHeader)); //Shouldn't need but we'll see.
 			processedSamples[i] = calloc(BUFFER_SIZE_PER_DEVICE, sizeof(uint16_t));
 		}
+	*/
+
 
 		needToFlashRed = 1;
 		//HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
@@ -1084,6 +1105,12 @@ void Process_ADC_Buffer_Full(ADC_HandleTypeDef* hadc, int currentBufferTarget)
 		{
 			volatile uint32_t* targetBufferRegister = (currentBufferTarget == 1) ? &(hadc->DMA_Handle->Instance->M0AR) : &(hadc->DMA_Handle->Instance->M1AR);
 			*targetBufferRegister = (uint32_t)transmitBuffers[*currentCycle + 1];
+
+			if(adcNumber == ADC_3 && *currentCycle >= 6)
+			{
+				int x = 0;
+				x++;
+			}
 
 		}
 		else if (*currentCycle == params.CycleCount)
